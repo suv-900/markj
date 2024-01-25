@@ -1,8 +1,4 @@
-web/src/main/resources/templates/personalweb.html
-
-web/src/main/resources/application.properties
-
-
+application.properties
 
 HELP.md
 target/
