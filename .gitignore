@@ -1,5 +1,6 @@
 application.properties
-mark
+
+/mark
 
 HELP.md
 target/
