@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.logging.FileHandler;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,8 +17,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.tomcat.util.codec.binary.Base64;
 
-import com.mark.web.models.FileObject;
+
 import com.mark.web.models.User;
 import com.mark.web.services.serviceImplementation.UserServiceImplementation;
 import com.mark.web.services.serviceImplementation.UtillityServiceImplementation;
@@ -53,27 +53,32 @@ public class UserController {
 
     @PostMapping("/uploadFile")
     public String getFile(Model model,@RequestParam("image")MultipartFile file){
-        String uploadDirectory=System.getProperty("user.dir")+"/uploads";
         
+        String uploadDirectory=System.getProperty("user.dir")+"/uploads";
         Path fileNameAndPath=Paths.get(uploadDirectory,file.getOriginalFilename());
 
         StringBuilder fileName=new StringBuilder();
         fileName.append(file.getOriginalFilename());
         
-        System.out.println("uploadDirectory: "+uploadDirectory);
-        System.out.println("filenameAndPath: "+fileNameAndPath);
-
         //
 
         try{
             byte[] fileByte=file.getBytes();
-            String hexString=utils.byteToHex(fileByte);
-            System.out.println(hexString);
-            Files.write(fileNameAndPath,file.getBytes());
+            
+            // String hexString=utils.byteToHex(fileByte);
+            // System.out.println("hex string: "+hexString+"\nstring length: "+hexString.length());
+            
+            String encbase64String=Base64.encodeBase64String(fileByte);
+
+            System.out.println("string length: "+encbase64String.length());
+            // byte[] decodedBytes=Base64.decodeBase64(encbase64String);
+
+            Files.write(fileNameAndPath,fileByte);
+
+
         }catch(IOException e){
             e.printStackTrace();
         } 
-
 
         model.addAttribute("msg","image added "+fileName.toString());
         return "uploadFile";
