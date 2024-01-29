@@ -2,7 +2,7 @@ package com.mark.web.db;
 
 // import java.util.Properties;
 
-
+// import org.postgresql.Driver;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -33,23 +33,33 @@ public class DatabaseConnections {
     public DatabaseConnections(){}
 
     static {
- 
-        logger.info("Setting DataBase Properties."); 
         
+        try{
+            System.out.println(Class.forName("org.postgresql.Driver").toString());
+            logger.info("Driver on classpath");
+        }catch(ClassNotFoundException e){
+            System.out.println("Class not found");
+            e.printStackTrace();
+        }
+
         dataSource=new BasicDataSource();
         // dataSource.setUrl(env.getProperty("spring.datasource.url"));
         // dataSource.setUsername(env.getProperty("spring.datasource.username"));
         // dataSource.setPassword(env.getProperty("spring.datasource.password"));
         
-        dataSource.setUrl("jdbc:postgres://localhost/mark-db");
+        dataSource.setUrl("jdbc:postgres://localhost:5432/mark-db");
         dataSource.setUsername("core");
         dataSource.setPassword("12345678");
-        dataSource.setDriverClassName("org.postgres.Driver"); 
+        dataSource.setDriverClassName("org.postgres.Driver");
+        
         dataSource.setMaxTotal(2);//-1 for no limit
         dataSource.setMinIdle(2);
         dataSource.setMaxIdle(2);
         
-        logger.info("Database operation set.");       
+        System.out.println("Driver to use: "+dataSource.getDriver());
+        System.out.println("DriverClassName: "+dataSource.getDriverClassName());
+        System.out.println("DriverClassLoader: "+dataSource.getDriverClassLoader());
+        
         
         //-->reserved for rare needs
         
