@@ -17,12 +17,31 @@ public class UserServiceImplementation implements UserService {
     // private static PrintWriter writer=new PrintWriter(); 
    
     private static final Logger log=LogManager.getLogger(); 
-    private BasicDataSource datasource=DatabaseConnections.getDataSource();
-
+    private static BasicDataSource datasource=DatabaseConnections.getDataSource();
+    
     public UserServiceImplementation(){
-        log.info("datasource object: "+datasource);
     }
     
+    public void searchUser(){
+
+    }
+    
+    public void sendFriendRequest(){
+
+    }
+
+    public void removeFriend(){
+
+    }
+
+    public void askUserOnline(){
+
+    } 
+
+    public void updateProfilePicture(){
+
+    }
+
     public void add(String username,String password,String email)throws SQLException{
         //check if user exists
         Connection con=null;
@@ -97,26 +116,37 @@ public class UserServiceImplementation implements UserService {
     }
 
     public void checkUsername(String username){
-       
+        datasource=DatabaseConnections.getDataSource();
         try{
-            // Connection con =cd.getNewConnection();
-            // if(con==null) return;
             Connection con=datasource.getConnection();
-
-            log.info("Got a connection[checkUsername]");
-
-            String query="select count(*) from users where username=?";
-            PreparedStatement ps=con.prepareStatement(query);
-
-            System.out.println("ps: "+ps); 
-            ps.setString(1, username);
-            //false=no result,
-            boolean exists=ps.execute();
-            System.out.println("result: "+exists); 
-        }catch(SQLException s){
-            s.printStackTrace();
-            // throw s;
+            log.info("Connection established");
+        }catch(SQLException e){
+            log.info("SQLException");
         }
+        // Connection con=DatabaseConnections.getConnection();
+
+        // try{
+        //     // Connection con =cd.getNewConnection();
+        //     // if(con==null) return;
+            
+            
+
+        //     // Connection con=datasource.getConnection();
+
+        //     // log.info("Got a connection[checkUsername]");
+
+        //     // String query="select count(*) from users where username=?";
+        //     // PreparedStatement ps=con.prepareStatement(query);
+
+        //     // System.out.println("ps: "+ps); 
+        //     // ps.setString(1, username);
+        //     // //false=no result,
+        //     // boolean exists=ps.execute();
+        //     // System.out.println("result: "+exists); 
+        // }catch(SQLException s){
+        //     s.printStackTrace();
+        //     // throw s;
+        // }
         // return exists;
     }
 }

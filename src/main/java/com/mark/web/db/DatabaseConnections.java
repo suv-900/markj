@@ -4,15 +4,22 @@ package com.mark.web.db;
 
 // import org.postgresql.Driver;
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.commons.dbcp2.DriverConnectionFactory;
+import org.apache.commons.dbcp2.PoolableConnectionFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+import org.postgresql.Driver;
+
+
 import java.sql.Connection;
 // import java.sql.DriverManager;
 // import java.sql.SQLException;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 
 @Component
 public class DatabaseConnections {
@@ -25,43 +32,62 @@ public class DatabaseConnections {
     public static Connection connection=null;
     private static Logger logger=LogManager.getLogger(); 
     public static BasicDataSource dataSource;    
-    
+    private static String dbURL="jdbc:postgresql:mark-db";
+    private static String dbUser="core";
+    private static String dbPassword="12345678";
+
     // @Autowired
     // private static Environment env;  
 
     //  jdbc:postgres://localhost/mark-db core 12345678
-    public DatabaseConnections(){}
+    public DatabaseConnections(){
+    }
 
     static {
-        
+      
+        //check driver on classpath
         try{
+            
+            System.out.println(DriverManager.getDriver("jdbc:postgresql:mark-db"));        
             System.out.println(Class.forName("org.postgresql.Driver").toString());
-            logger.info("Driver on classpath");
+            System.out.println("Driver on classpath");
         }catch(ClassNotFoundException e){
             System.out.println("Class not found");
             e.printStackTrace();
+        }catch(SQLException e){
+            e.printStackTrace();
         }
 
-        dataSource=new BasicDataSource();
+        
+        //read from application property files
         // dataSource.setUrl(env.getProperty("spring.datasource.url"));
         // dataSource.setUsername(env.getProperty("spring.datasource.username"));
         // dataSource.setPassword(env.getProperty("spring.datasource.password"));
+        // Driver driver=org.postgresql.Driver; 
         
-        dataSource.setUrl("jdbc:postgres://localhost:5432/mark-db");
-        dataSource.setUsername("core");
-        dataSource.setPassword("12345678");
-        dataSource.setDriverClassName("org.postgres.Driver");
         
+        //apparently "jdbc:postgresql://localhost:5432/mark-db" doesnt work
+        
+        dataSource=new BasicDataSource();
+        dataSource.setUrl(dbURL);
+        dataSource.setUsername(dbUser);
+        dataSource.setPassword(dbPassword);
+        // dataSource.setDriverClassName("org.postgresql.Driver");
+        // dataSource.setDriver(new Driver());
+        
+        
+
         dataSource.setMaxTotal(2);//-1 for no limit
         dataSource.setMinIdle(2);
         dataSource.setMaxIdle(2);
-        
-        System.out.println("Driver to use: "+dataSource.getDriver());
-        System.out.println("DriverClassName: "+dataSource.getDriverClassName());
-        System.out.println("DriverClassLoader: "+dataSource.getDriverClassLoader());
-        
-        
-        //-->reserved for rare needs
+
+        System.out.println("Driver to use: "+dataSource.getMaxTotal());
+        System.out.println("DriverClassName: "+dataSource.getMinIdle());
+        System.out.println("DriverClassLoader: "+dataSource.getMaxIdle());
+
+
+
+                //-->reserved for rare needs
         
         //object pool
         // GenericObjectPool connectionPool=new GenericObjectPool(null);
@@ -82,8 +108,36 @@ public class DatabaseConnections {
 
     }
     
+    public static void ping(){
+        // String dbURL="jdbc:postgres://localhost:5422/mark-db";
+        String dbURL="jdbc:postgresql:mark-db";
+        String dbUser="core";
+        String dbPassword="12345678";
+
+        try{
+            Class.forName("org.postgresql.Driver");
+            DriverManager.getDriver(dbURL);
+            Connection con=DriverManager.getConnection(dbURL,dbUser,dbPassword);
+        }catch(SQLException e){
+            e.printStackTrace();
+        }catch(ClassNotFoundException c){
+            c.printStackTrace();
+        }
+        
+    }
+    
     public static BasicDataSource getDataSource(){
         return dataSource;
+    }
+
+    public static Connection getConnection(){
+        try{
+            connection=DriverManager.getConnection(dbURL,dbUser,dbPassword);
+
+        }catch(SQLException e){
+            e.printStackTrace();
+        }
+        return connection;
     }
 
     // public static boolean connectDB() throws SQLException{
