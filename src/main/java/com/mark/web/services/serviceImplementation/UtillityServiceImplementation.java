@@ -48,7 +48,6 @@ public class UtillityServiceImplementation implements UtillityServices{
 
         String finalString=null;
         finalString=iterations+":"+hexUtils.byteToHexString(salt)+":"+hexUtils.byteToHexString(hashedPasswordBytes);
-        System.out.println(finalString);
 
         return finalString;
     } 
@@ -72,17 +71,19 @@ public class UtillityServiceImplementation implements UtillityServices{
     // }
     
     public boolean validatePassword(String loginPassword,String storedPassword){
-        System.out.println("loginPassword: "+loginPassword+" storedPassword:"+storedPassword);
+        System.out.println("loginPassword: "+loginPassword+"\nstoredPassword:"+storedPassword);
         
         String[] parts=storedPassword.split(":");
         int storedIteration=Integer.parseInt(parts[0]);
         byte[] storedSalt=hexUtils.byteFromHex(parts[1]);
         char[] storedHash=parts[2].toCharArray();
-
+        
+        int keylen=UtillityServiceImplementation.keyLength; 
+        System.out.println("keyLength: "+keylen);
         byte[] hash=null;
         try{
             //refactor the type(UtillityServiceImplemenetation.keyLength)
-            KeySpec specs=new PBEKeySpec(loginPassword.toCharArray(),storedSalt,storedIteration,UtillityServiceImplementation.keyLength);
+            KeySpec specs=new PBEKeySpec(loginPassword.toCharArray(),storedSalt,storedIteration,keylen);
             SecretKeyFactory factory=SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
             hash=factory.generateSecret(specs).getEncoded();
         }catch(NoSuchAlgorithmException e){
@@ -107,10 +108,22 @@ public class UtillityServiceImplementation implements UtillityServices{
         }else{
             return false;
         }
+        System.out.println("valid: "+valid);
         return valid;
     }
 
-    public void logError(String e){
-        System.out.println(e);
+    public boolean stringEmpty(String s){
+        return s.isEmpty();
     }
+
+    // public String byteToHex(byte[] array){
+    //     StringBuilder sb=new StringBuilder();
+
+    //     for(byte b:array){
+    //         sb.append(String.format("%02X",b));
+    //     }
+
+    //     return sb.toString();
+    // }
+
 }
