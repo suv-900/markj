@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.SQLException;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.tomcat.util.codec.binary.Base64;
 
 
@@ -30,19 +33,19 @@ import jakarta.servlet.http.HttpServletResponse;
 @RequestMapping("/users")
 public class UserController {
 
-    private static UserServiceImplementation userServiceImpl=new UserServiceImplementation();
-    // private static final Logger logger=LogManager.getLogger(); 
+    private static final Logger log=LogManager.getLogger(); 
+    private static UserServiceImplementation userService=new UserServiceImplementation();
     private static final UtillityServiceImplementation utils=new UtillityServiceImplementation();
     
     private File recievedFile;
+      
     
-    @GetMapping("/login")
-    public String sendLoginPage(Model model){
-        model.addAttribute("name","Isoap");
-        System.out.println(model);
-        return "loginUser";
+    @GetMapping("/getFile")
+    public File sendFile(){
+        return recievedFile;
     }
-    
+  
+
     @GetMapping("/uploadFile")
     public String sendUploadFile(){
         StringBuilder sb=new StringBuilder();
@@ -51,7 +54,7 @@ public class UserController {
         return "uploadFile";
     }
 
-    @PostMapping("/uploadFile")
+    @PostMapping("/uploadImage")
     public String getFile(Model model,@RequestParam("image")MultipartFile file){
         
         String uploadDirectory=System.getProperty("user.dir")+"/uploads";
@@ -84,55 +87,80 @@ public class UserController {
         return "uploadFile";
     }
     
-    @GetMapping("/getFile")
-    public File sendFile(){
-        return recievedFile;
-    }
-
-    @GetMapping("/register")
-    public String sendRegisterPage(Model model){
-        System.out.println(model);
+  
+    @GetMapping("/login")
+    public String sendLoginPage(Model model){
         model.addAttribute(new User());
-        System.out.println(model);
-        return "registerUser";
+        return "loginUser";
     }
-    @RequestMapping(value="/validateUserLogin",method=RequestMethod.POST)
-    public String validateUserLogin(@RequestParam("username")String username,
-        @RequestParam("password")String password,    
-        HttpServletResponse res){
-        System.out.println(username+" "+password);
-        return "homePage";
+    
+    
+    @PostMapping("/login")
+    public String validateUserLogin(@ModelAttribute User user, HttpServletResponse response,Model model){
+        String username=user.getUsername();
+        String password=user.getPassword();
+        if(utils.stringEmpty(username)||utils.stringEmpty(password)){
+            model.addAttribute("error","missing fields");
+            response.setStatus(400);
+            return "loginUser";
+        }        
+        
+        try{
+            if(userService.loginUser(username,password)){
+                return "homePage";
+            }else{
+                model.addAttribute("error","doesnt match.");
+                response.setStatus(401);
+                return "loginUser";
+            }
+        
+        }catch(SQLException e){
+            e.printStackTrace();
+            model.addAttribute("error","Server Error");
+            response.setStatus(400);
+            return "loginUser";
+        }
+         
+
         // boolean loginSuccess=userServiceImpl.loginUser(username,password);
     }
+    
+    
+    @GetMapping("/register")
+    public String sendRegisterPage(Model model){
+        model.addAttribute(new User());
+        return "registerUser";
+    }
+    
+    @PostMapping("/register")
+    public String registerUser(@ModelAttribute User user,HttpServletResponse response,Model model){
+        try{
+            if(user.checkNULL()){
+                response.setStatus(400);
+                model.addAttribute("error","missing fields");
+                return "registerUser";
+            }
 
-    //username pass email
-    @RequestMapping(value="/registerUser",method=RequestMethod.POST)
-    public String registerUser(@ModelAttribute User user){
-           //username invalid
+            if(userService.checkUsername(user.getUsername())){
+                response.setStatus(400);
+                model.addAttribute("error","username exists");   
+                return "registerUser";
+            }
             
-            userServiceImpl.checkUsername(user.getUsername()); 
+            String hashedPass=utils.generateHashedPassword(user.getPassword());        
+            userService.registerUser(user.getUsername(),hashedPass,user.getEmail());
+            response.setStatus(200);
             return "homePage";
-        //    if(userServiceImpl.checkUsername(user.getUsername())){
-            //username exists;   
 
-            // // System.out.println(user);
-
-            // // String hashedPassword=utils.generateHashedPassword(user.getPassword());
-            // // user.setPassword(hashedPassword);
-            
-            // try{
-            //     // userServiceImpl.add(user);
-            // }catch(SQLException e){
-                
-            //     e.printStackTrace();
-            //     //return 500 and log error
-            // }
-            //only care about username and token and feed post
-
-        }
-    //what a code
-    //checkusername function
-    //check the response
+        }catch(SQLException e){
+            response.setStatus(500);
+            model.addAttribute("error","Server Error");
+            e.printStackTrace();
+            return "registerUser";
+        } 
+    }
+    
+    
     @RequestMapping(value="checkUsername",method=RequestMethod.POST)
     public void checkIfUsernameExists(@RequestBody String username){
         // boolean usernameExists=userServiceImpl.checkUsername(username);
