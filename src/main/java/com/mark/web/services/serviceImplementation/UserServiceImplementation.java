@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
@@ -15,50 +16,28 @@ import com.mark.web.services.UserService;
 public class UserServiceImplementation implements UserService {
     // static Connection connection= get connection from the pool
     // private static PrintWriter writer=new PrintWriter(); 
-   
+    private static final UtillityServiceImplementation utils=new UtillityServiceImplementation();
     private static final Logger log=LogManager.getLogger(); 
     private static BasicDataSource datasource=DatabaseConnections.getDataSource();
     
-    public UserServiceImplementation(){
-    }
-    
-    public void searchUser(){
-
-    }
-    
-    public void sendFriendRequest(){
-
-    }
-
-    public void removeFriend(){
-
-    }
-
-    public void askUserOnline(){
-
-    } 
-
-    public void updateProfilePicture(){
-
-    }
-
-    public void add(String username,String password,String email)throws SQLException{
-        //check if user exists
-        Connection con=null;
-        try{
-            con=datasource.getConnection();
-        }catch(SQLException e){
-            e.printStackTrace();
-        }
-
-        String query="insert into users(username,password,email) VALUES(?,?,?,?)";
-        PreparedStatement ps=con.prepareStatement(query);
-        ps.setString(1,username);
-        ps.setString(2,password);
-        ps.setString(3,email);
-        
-        int rowsAffected=ps.executeUpdate();
-        System.out.println("rowsaffected: "+rowsAffected);
+    public UserServiceImplementation(){}
+      
+    public void registerUser(String username,String password,String email)throws SQLException{
+            Connection con=datasource.getConnection();
+            System.out.println("Username: "+username);
+            System.out.println("Password: "+password);
+            System.out.println("Email: "+email);
+            
+            String query="insert into users(username,password,email) VALUES(?,?,?)";
+            PreparedStatement ps=con.prepareStatement(query);
+            ps.setString(1,username);
+            ps.setString(2,password);
+            ps.setString(3,email);
+            
+            ps.executeUpdate();
+            
+            ps.close();
+            con.close();
     }
 
     public void deleteUser(int id)throws SQLException{
@@ -78,9 +57,7 @@ public class UserServiceImplementation implements UserService {
 
 
     }
-    public void reportUser(String username,int userID){
-
-    }
+    
     public void getUser(int id)throws SQLException{
         try{
             Connection con=datasource.getConnection();
@@ -94,59 +71,64 @@ public class UserServiceImplementation implements UserService {
         }
     }
 
-    public void loginUser(String username,String rawPassword)throws SQLException{
+    public boolean loginUser(String username,String rawPassword)throws SQLException{
         //raw password compare to encrypted password
         // Connection con =cd.getNewConnection();
         // if(con==null) return; 
-        try{
             Connection con=datasource.getConnection();
-            String query1="select (username,password) from users where username=?";
+            
+            String query1="select password from users where username=?";
             PreparedStatement ps=con.prepareStatement(query1);
             ps.setString(1,username);
+            
             ResultSet rs=ps.executeQuery();
-            //LOOK
-            System.out.println(rs);
-            // User user
-        
-            //get encrypted pass 
-            //comparePassword();
-        }catch(SQLException e){
-            e.printStackTrace();
-        } 
+            rs.next();
+            String dbPassword=(String)rs.getObject("password");
+            
+            ps.close();
+            con.close();
+
+            boolean isEqual=utils.validatePassword(rawPassword, dbPassword);
+            return isEqual;
+
     }
 
-    public void checkUsername(String username){
-        datasource=DatabaseConnections.getDataSource();
-        try{
-            Connection con=datasource.getConnection();
-            log.info("Connection established");
-        }catch(SQLException e){
-            log.info("SQLException");
-        }
-        // Connection con=DatabaseConnections.getConnection();
+    public boolean checkUsername(String username)throws SQLException{
+        boolean usernameExists=false;
+        Connection con=datasource.getConnection();
+        String query="select * from users where username=?"; 
+        
+        PreparedStatement ps=con.prepareStatement(query);
+        ps.setString(1,username);
 
-        // try{
-        //     // Connection con =cd.getNewConnection();
-        //     // if(con==null) return;
-            
-            
+        ResultSet rs=ps.executeQuery();
+        usernameExists=rs.next();
+        ps.close();
+        con.close();
+        return usernameExists;
+    }
 
-        //     // Connection con=datasource.getConnection();
 
-        //     // log.info("Got a connection[checkUsername]");
+    public void searchUser(){
 
-        //     // String query="select count(*) from users where username=?";
-        //     // PreparedStatement ps=con.prepareStatement(query);
+    }
+    
+    public void sendFriendRequest(){
 
-        //     // System.out.println("ps: "+ps); 
-        //     // ps.setString(1, username);
-        //     // //false=no result,
-        //     // boolean exists=ps.execute();
-        //     // System.out.println("result: "+exists); 
-        // }catch(SQLException s){
-        //     s.printStackTrace();
-        //     // throw s;
-        // }
-        // return exists;
+    }
+
+    public void removeFriend(){
+
+    }
+
+    public void askUserOnline(){
+
+    } 
+
+    public void updateProfilePicture(){
+
+    }
+    public void reportUser(String username,int userID){
+
     }
 }

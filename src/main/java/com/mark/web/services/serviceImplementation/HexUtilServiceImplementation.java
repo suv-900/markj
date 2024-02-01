@@ -13,28 +13,52 @@ public class HexUtilServiceImplementation implements HexUtilsService {
         
         // return HexUtils.fromHexString(s);
         
-        int length=s.length();
+        int hexLength=s.length();
         char[] charArray=s.toCharArray();
-        byte[] result=new byte[length/2];
-        System.out.println("String length: "+length);
-        System.out.println("byteArray length: "+result.length);
+        byte[] bytes=new byte[hexLength/2];
+        System.out.println("String length: "+hexLength);
+        System.out.println("byteArray length: "+bytes.length);
         
-        for(int i=0;i<length;i++){
-            try{
-                int upperNibble=getDecimalFromHex(charArray[2*i]) ;
-                int lowerNibble=getDecimalFromHex(charArray[2*i+1]);
-                result[i]=(byte) (upperNibble << 4 + lowerNibble); 
-            }catch(IllegalArgumentException e){
-                e.printStackTrace();
+        for(int i=0;i<bytes.length;i++){
+            if(2*i<hexLength){
+                try{
+                    int upperNibble=getDigit(charArray[2*i]) ;
+                    int lowerNibble=getDigit(charArray[2*i+1]);
+                    bytes[i]=(byte) (upperNibble << 4 + lowerNibble); 
+                }catch(IllegalArgumentException e){
+                    e.printStackTrace();
+                }
+            }else{
+                break;
             }
+            
         }
-        return result; 
+        return bytes; 
     }
-   
+    
+    private int getDigit(char c){
+        int digit=Character.digit(c,16);
+        if(digit==-1){
+            throw new IllegalArgumentException();
+        }
+        return digit;
+    }
+    
+    
+    
+
+    public String byteToHex(byte[] array){
+        StringBuilder sb=new StringBuilder();
+        for(int i=0;i<array.length;i++){
+            sb.append(Character.forDigit((array[i]>>4 & 0xF), 16));
+        }
+        return sb.toString();
+    }
+
+
     public String byteToHexString(byte[] array){
         BigInteger bi=new BigInteger(1,array);
         String hex=bi.toString(16);
-        System.out.println("byte to hex: "+hex);
         int paddingLength=(array.length*2)-hex.length();
         if(paddingLength>0){
             return String.format("%0"+paddingLength+"d",0)+hex;
@@ -59,53 +83,5 @@ public class HexUtilServiceImplementation implements HexUtilsService {
     //         //return charArray.toString(); 
     //     } 
     // }
-
-        public byte[] byteFromHex2(String s){
-            return HexUtils.fromHexString(s);
-    }
-
-    //unhandled Exception
-    private int getDecimalFromHex(char c)throws IllegalArgumentException{
-        switch(c){
-            case '0':
-            return 0;
-            case '1':
-            return 1;
-            case '2':
-            return 2;
-            case '3':
-            return 3;
-            case '4':
-            return 4;
-            case '5':
-            return 5;
-            case '6':
-            return 6;
-            case '7':
-            return 7;
-            case '8':
-            return 8;
-            case '9':
-            return 9;
-            case 'a':
-            return 10;
-            case 'b':
-            return 11;
-            case 'c':
-            return 12;
-            case 'd':
-            return 13;
-            case 'e':
-            return 14;
-            case 'f':
-            return 15;
-            default:
-                System.out.println("input: "+c);
-                throw new IllegalArgumentException("Invalid Hex character");
-        }
-    }
-
-
-
-    
+   
 }

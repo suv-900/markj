@@ -104,7 +104,6 @@ public class UserController {
             response.setStatus(400);
             return "loginUser";
         }        
-        
         try{
             if(userService.loginUser(username,password)){
                 return "homePage";

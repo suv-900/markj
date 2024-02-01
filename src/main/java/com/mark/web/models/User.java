@@ -55,5 +55,16 @@ public class User {
         return this.userDescription;
     }
     //private String email;
-
+    public boolean checkNULL(){
+        if(username.isEmpty()){ 
+            return true;
+        }
+        if(email.isEmpty()){
+            return true;
+        }
+        if(password.isEmpty()){
+            return true;
+        }
+        return false;
+    }
 }
