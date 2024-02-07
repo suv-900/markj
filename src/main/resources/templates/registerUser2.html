@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <form id="registerForm">
+            <input id="username" placeholder="username" type="text" required/><br>
+            <input id="email" placeholder="email" type="email" required/><br>
+            <input id="password" placeholder="password" type="password" required/><br>
+            <button type="button" onclick="registerUser()">submit</button>
+        </form>
+        <div id="outputDiv"></div>
+    </body>
+
+    <script>
+        const outputDiv=document.getElementById("outputDiv");
+        
+        function stringEmpty(str){
+            return str.length===0?true:false;
+        }
+
+        async function registerUser(){
+            const form=document.getElementById("registerForm");
+            const username=form.elements[0].value;
+            const email=form.elements[1].value;
+            const password=form.elements[2].value;
+
+            if(stringEmpty(username) || stringEmpty(email) ||  stringEmpty(password)){
+                outputDiv.innerHTML="missing fields";
+                return;
+            }
+            
+            // const emailCorrect=email.includes("@gmail.com");
+            // const passwordLength=password.length<=1?true:false;
+            
+            // if(!emailCorrect && passwordLength){
+            //     outputDiv.innerHTML="invalid fields";
+            //     return;
+            // }
+
+            // if(!emailCorrect){
+            //     outputDiv.innerHTML="wrong gmail";
+            //     return;
+            // }
+
+            // if(passwordLength){
+            //     outputDiv.innerHTML="password too short more than 5 chars";
+            //     return;
+            // }
+
+            
+            const xhttp=new XMLHttpRequest();
+            
+            xhttp.onreadystatechange=()=>{
+                if(this.readyState===4){
+                    const status=xhttp.status;
+                    const statusText=xhttp.statusText;
+                    let token;
+                    console.log("response recieved.");
+                if(status===200){
+                    console.log("statusText "+statusText);
+                    token=xhttp.getResponseHeader("Token");
+                    localStorage.setItem("Token",token);
+                    outputDiv.innerHTML=statusText+" "+status;
+
+                }else if(status === 500){
+                    ouputDiv.innerHTML=500+" Server Error";
+                }else if(status === 401){
+                    // document.createElement("error").setAttribute()
+                    ouputDiv.innerHTML=401+" Unauthorised";
+                }else{
+                    ouputDiv.innerHTML="Error";
+                }
+            }
+        }
+        xhttp.open("POST","http://localhost:8080/users/register2",true)
+        xhttp.setRequestHeader("Content-Type","application/x-www-form-urlencoded")
+        xhttp.send(`username=${username}&email=${email}&password=${password}`)
+    }
+    </script>
+</html>

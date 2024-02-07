@@ -1,9 +1,6 @@
 package com.mark.web.services.serviceImplementation;
 
 import java.math.BigInteger;
-
-import org.apache.tomcat.util.buf.HexUtils;
-
 import com.mark.web.services.HexUtilsService;
 
 public class HexUtilServiceImplementation implements HexUtilsService {
@@ -66,7 +63,6 @@ public class HexUtilServiceImplementation implements HexUtilsService {
             return hex;
         }
     }
-
     // public String byteToHexString2(byte[] byteArray){
     //     //char array
     //     // BigInteger bigInteger=new BigInteger(1,byteArray);

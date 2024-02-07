@@ -9,8 +9,9 @@ public class HomePageController {
    public String sendHomePage(){
     return "homePage";
    }
+   
    @GetMapping("/error")
-   public String sendErrorPage(){
+   public String error(){
       return "errorPage";
    }
    

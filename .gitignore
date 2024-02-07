@@ -1,6 +1,9 @@
 application.properties
+schema.sql
+mark
+http_status_codes.webp
 
-/mark
+/uploads
 
 HELP.md
 target/
