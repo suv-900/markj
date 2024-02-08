@@ -96,21 +96,21 @@ public class UserController {
     }
     
   
-    @GetMapping("/login")
+    @GetMapping("/login2")
     public String sendLoginPage(Model model){
         model.addAttribute(new User());
-        return "loginUser";
+        return "loginUser2";
     }
+     
     
-    
-    @PostMapping("/login")
+    @PostMapping("/login2")
     public String validateUserLogin(@ModelAttribute User user, HttpServletResponse response,Model model){
         String username=user.getUsername();
         String password=user.getPassword();
         if(codec.stringEmpty(username) || codec.stringEmpty(password)){
             model.addAttribute("error","missing fields");
             response.setStatus(400);
-            return "loginUser";
+            return "loginUser22";
         }        
         try{
             if(userService.loginUser(username,password)){
@@ -118,7 +118,7 @@ public class UserController {
                 if(userid==-1){
                     model.addAttribute("error","server error.");
                     response.setStatus(500);
-                    return "loginUser";
+                    return "loginUser2";
                 }
                 String token=tokenService.createToken(userid);
                 response.setHeader("token",token);
@@ -127,7 +127,7 @@ public class UserController {
             }else{
                 model.addAttribute("error","doesnt match.");
                 response.setStatus(401);
-                return "loginUser";
+                return "loginUser2";
             }
         
         }catch(Exception e){
@@ -135,15 +135,50 @@ public class UserController {
             log.info(e);
             model.addAttribute("error","Server Error");
             response.setStatus(500);
-            return "loginUser";
+            return "loginUser2";
         }
          
 
-        // boolean loginSuccess=userServiceImpl.loginUser(username,password);
+        // boolean loginSuccess=userServiceImpl.loginUser2(username,password);
+    }
+     @GetMapping("/register")
+    public String sendRegisterPage(){
+        return "registerUser";
+    }
+    
+    @PostMapping(path="/register",consumes={MediaType.APPLICATION_FORM_URLENCODED_VALUE})
+    public String registerUser(@RequestParam MultiValueMap<String,String> form,HttpServletResponse response){
+        String username=form.getFirst("username");
+        String password=form.getFirst("password");
+        String email=form.getFirst("email");
+        
+        if(username.isEmpty() || password.isEmpty() || email.isEmpty()){
+            response.setStatus(400);
+            return "homePage";
+        }
+         
+        try{
+            if(userService.checkUsername(username)){
+                response.setStatus(400);
+                return "homePage";
+            }        
+
+            int userid=userService.registerUser(username,password,email);
+            String token=tokenService.createToken(userid);
+            response.setHeader("Token",token);
+            response.setStatus(200);
+            return "homePage";
+
+        }catch(Exception e){
+            log.info(e);
+            response.setStatus(500);
+            return "homePage";
+        }
+
     }
     
     
-    @GetMapping("/register")
+    @GetMapping("/register2")
     public String sendRegisterPage(Model model){
         model.addAttribute(new User());
         return "registerUser";
@@ -151,7 +186,7 @@ public class UserController {
    
     
     
-    @PostMapping("/register")
+    @PostMapping("/register2")
     public String registerUser(@ModelAttribute User user,HttpServletResponse response,Model model){
         try{
             if(user.checkNULL()){
@@ -180,20 +215,7 @@ public class UserController {
             return "registerUser";
         }
     }
-    @GetMapping("/register2")
-    public String sendRegisterPage2(){
-        return "registerUser2";
-    }
-    
-    @PostMapping(path="/register2",consumes={MediaType.APPLICATION_FORM_URLENCODED_VALUE})
-    public String registerUser2(@RequestParam MultiValueMap<String,String> form){
-        String username=form.getFirst("username");
-        String password=form.getFirst("password");
-        String email=form.getFirst("email");
-         
-        return "homePage";
-    }
-    
+   
     @GetMapping("/sendFriendRequest")
     public String sendFriendRequestHTML(){
         return "sendFriendRequest";
