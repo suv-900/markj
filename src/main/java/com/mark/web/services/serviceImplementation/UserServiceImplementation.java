@@ -5,12 +5,16 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.mark.web.db.DatabaseConnections;
+import com.mark.web.models.FriendRequest;
 import com.mark.web.services.UserService;
 
 public class UserServiceImplementation implements UserService {
@@ -49,25 +53,39 @@ public class UserServiceImplementation implements UserService {
             
             return user_id;
     }
-       public boolean loginUser(String username,String password)throws Exception{
+       public List<String> loginUser(String username)throws Exception{
         //raw password compare to encrypted password
-        // Connection con =cd.getNewConnection();
-        // if(con==null) return; 
             Connection con=datasource.getConnection();
             
-            String query1="select password from users where username=?";
+            String query1="select user_id,password from users where username=? ";
+            
             PreparedStatement ps=con.prepareStatement(query1);
             ps.setString(1,username);
             
+          
             ResultSet rs=ps.executeQuery();
             rs.next();
+           
+            List<String> list=new LinkedList<String>();
             String dbPassword=(String)rs.getObject("password");
+            int userid=(int)rs.getObject("user_id");
             
+            rs.close();
             ps.close();
             con.close();
 
+
+            list.add(dbPassword);
+            list.add(Integer.toString(userid));
+            return list;
             // String decryptedText=utils.decrypt(dbPassword);
             // System.out.println("DecryptedText: "+decryptedText);
+
+
+    }
+
+
+    public boolean comparePassword(String dbPassword,String password){
 
             if(password.length()!=dbPassword.length()){
                 return false;
@@ -81,19 +99,21 @@ public class UserServiceImplementation implements UserService {
                 }
             }
             return true;
+    }
 
-    }
-    public void getFriendRequests(int user_id)throws Exception{
-        Connection con=datasource.getConnection();
+    // public void getFriendRequests(int user_id)throws Exception{
+    //     Connection con=datasource.getConnection();
         
-        String query="select (request_status,from_user_id,created_at) from friendRequests where to_user_id=?";
-        PreparedStatement ps=con.prepareStatement(query);
-        ps.setInt(1,user_id);
-        ResultSet rs=ps.executeQuery();
-        ps.close();
-        con.close();
-        System.out.println("getRequests ResultSet: "+rs.toString()); 
-    }
+    //     String query="select (request_status,from_user_id,created_at) from friendRequests where to_user_id=?";
+    //     PreparedStatement ps=con.prepareStatement(query);
+    //     ps.setInt(1,user_id);
+    //     ResultSet rs=ps.executeQuery();
+    //     ps.close();
+    //     con.close();
+
+    //     rs.close();
+    //     System.out.println("getRequests ResultSet: "+rs.toString()); 
+    // }
 
     public boolean checkUsername(String username)throws SQLException{
         boolean usernameExists=false;
@@ -105,6 +125,7 @@ public class UserServiceImplementation implements UserService {
 
         ResultSet rs=ps.executeQuery();
         usernameExists=rs.next();
+        rs.close();
         ps.close();
         con.close();
         return usernameExists;
@@ -124,10 +145,83 @@ public class UserServiceImplementation implements UserService {
         con.close();
             
     }
-    public void sendFriendRequest(String username){
 
+    public List<List<String>> getImages(int user_id)throws Exception{
+        String query="select image,image_description from images where user_id=?";
+        Connection con=datasource.getConnection();
+        PreparedStatement ps=con.prepareStatement(query);
+        ps.setInt(1,user_id);
+
+        ResultSet rs=ps.executeQuery();
+        
+        List<String> imagesList=new LinkedList<String>();
+        List<String> imageDescriptionList=new LinkedList<String>();
+
+        while(rs.next()){
+            String image=(String)rs.getObject("images");
+            imagesList.add(image);
+            String imageDescription=(String)rs.getObject("image_description");
+            imageDescriptionList.add(imageDescription);
+        }
+        rs.close();
+        ps.close();
+        con.close();
+
+        List<List<String>> allInOne=new LinkedList<List<String>>();
+        allInOne.add(imagesList);
+        allInOne.add(imageDescriptionList);
+
+        return allInOne;
     }
 
+    public void sendFriendRequest(String username,int user1id) throws SQLException{
+        Connection con=null;
+        PreparedStatement ps=null; 
+        //release all resources 
+        try{
+            int user2id=getUserID(username); 
+            String query="insert into friendRequests(to_user_id,from_user_id) values(?,?)";
+            con=datasource.getConnection();
+            ps=con.prepareStatement(query);
+            ps.setInt(1,user2id);
+            ps.setInt(2,user1id);
+            
+            ps.executeUpdate();
+            // log.info("Rows affected: "+ra);
+
+        }catch(Exception e){
+            log.info(e);
+            ps.close();
+            con.close();//might throw off the balcony
+        }
+    
+        
+    }
+
+    public List<FriendRequest> getFriendRequests(int userid)throws SQLException{
+        String query="select from_user_id,created_at from friendRequests where to_user_id=?";
+        Connection con=datasource.getConnection();
+        PreparedStatement ps=con.prepareStatement(query);
+        ps.setInt(1,userid);
+            
+        ps.execute();
+        ResultSet rs=ps.getResultSet();
+
+        List<FriendRequest> list=new LinkedList<FriendRequest>();
+        while(rs.next()){
+            int from_userId=(int) rs.getObject("from_user_id");
+            int sentTime=(int) rs.getObject("created_at");
+            FriendRequest frObj=new FriendRequest();
+            frObj.setFromUserID(from_userId);
+            frObj.setToUserID(userid);
+            frObj.setTime(sentTime);
+            list.add(frObj);
+        }
+        return list;
+    }
+    public void acceptFriendRequest(String username1,int user2id)throws Exception{
+
+    }
     public void deleteUser(int id)throws SQLException{
         try{
             Connection con=datasource.getConnection();
@@ -159,22 +253,16 @@ public class UserServiceImplementation implements UserService {
         }
     }
 
-    public int getUserID(String username){
+    public int getUserID(String username)throws Exception{
         int user_id=-1;
         
-        try{
-            Connection con=datasource.getConnection();
-            String query="select user_id from users where username=?";
-            PreparedStatement ps=con.prepareStatement(query);
-            ps.setString(1,username);
-            ResultSet rs=ps.executeQuery();
-            rs.next();
-            user_id=(int)rs.getObject("user_id");
-            return user_id;
-        }catch(Exception e){
-            log.info(e);
-        }
-        
+        String query="select user_id from users where username=?";
+        Connection con=datasource.getConnection();
+        PreparedStatement ps=con.prepareStatement(query);
+        ps.setString(1,username);
+        ResultSet rs=ps.executeQuery();
+        rs.next();
+        user_id=(int)rs.getObject("user_id");
         return user_id;
 
     }
