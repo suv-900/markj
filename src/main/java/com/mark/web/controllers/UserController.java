@@ -1,13 +1,14 @@
 package com.mark.web.controllers;
 
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
+import java.util.LinkedList;
 import java.util.List;
+
 
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -19,16 +20,18 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tomcat.util.codec.binary.Base64;
-import org.apache.tomcat.util.http.fileupload.FileItemIterator;
 
-import com.mark.web.models.Image;
+import com.google.gson.Gson;
+import com.mark.web.models.Friend;
+import com.mark.web.models.FriendRequest;
 import com.mark.web.models.User;
-import com.mark.web.services.serviceImplementation.PasswordCodec;
 import com.mark.web.services.serviceImplementation.TokenServiceImplementation;
 import com.mark.web.services.serviceImplementation.UserServiceImplementation;
 
@@ -39,11 +42,24 @@ import jakarta.servlet.http.HttpServletResponse;
 @Controller
 @RequestMapping("/users")
 public class UserController {
-
     private static final Logger log=LogManager.getLogger(); 
     private static UserServiceImplementation userService=new UserServiceImplementation();
     private static TokenServiceImplementation tokenService=new TokenServiceImplementation();    
-      
+    @PostMapping("/verifytoken")
+    public String verifyToken(HttpServletRequest request,HttpServletResponse response){
+
+        String token=request.getHeader("Token");
+
+        int userid=tokenService.verifyToken(token);
+        System.out.println(userid);
+        if(userid == -1){
+            response.setStatus(401);
+        }else{
+            response.setStatus(200);
+        }
+        return "errorPage";
+    }
+    
     @GetMapping("/uploadImage")
     public String sendUploadFile(){
         return "uploadImage";
@@ -267,10 +283,119 @@ public class UserController {
         }
     }
    
-    @GetMapping("/sendFriendRequest")
-    public String sendFriendRequestHTML(){
-        return "sendFriendRequest";
+    @GetMapping("/friends")
+    public String sendFriendsPage(){
+        return "friendsPage";
     }
+
+
+    @RequestMapping(path="/getFriendRequests",produces="application/json",method=RequestMethod.GET)
+    @ResponseBody
+    public List<FriendRequest> getFriendRequests(HttpServletRequest req,HttpServletResponse res){
+        List<FriendRequest> friendRequests=new LinkedList<FriendRequest>();
+        
+        String token=req.getHeader("Token");
+        if(token == null){
+            res.setStatus(400);
+            return friendRequests;
+        }
+
+        int userid=tokenService.verifyToken(token);
+        
+        try{
+            if(userid == -1){
+                res.sendError(404, "User not found");
+                return friendRequests;
+            }
+            if(userid == 500){
+                res.setStatus(500);
+                return friendRequests;
+            }
+        }catch(IOException e){
+            log.info(e);
+        }
+
+
+        try{
+            friendRequests=userService.getFriendRequests(userid);
+        }catch(SQLException e){
+            log.info(e);
+            res.setStatus(500);
+            return friendRequests;
+        }
+
+        System.out.println("FriendRequests: "+friendRequests);
+
+        return friendRequests;
+        
+    }
+
+    @RequestMapping(path="/getFriends",produces="application/json",method=RequestMethod.GET)
+    @ResponseBody
+    public List<Friend> getFriends(HttpServletRequest req,HttpServletResponse res){
+        
+        List<Friend> friendsList=new LinkedList<Friend>();
+        
+        String token=req.getHeader("Token");
+        if(token == null){
+            res.setStatus(400);
+            return friendsList;
+        }
+
+        int userid=tokenService.verifyToken(token);
+        
+        try{
+            if(userid == -1){
+                res.sendError(404, "User not found");
+                return friendsList;
+            }
+            if(userid == 500){
+                res.setStatus(500);
+                return friendsList;
+            }
+        }catch(IOException e){
+            log.info(e);
+        }
+       
+        try{
+            friendsList=userService.getAllFriends(userid);
+        }catch(SQLException e){
+            log.info(e);
+            res.setStatus(500);
+            return friendsList;
+        } 
+
+        return friendsList;
+       
+    }
+
+    @PostMapping(path="/addFriendRequest",consumes={MediaType.APPLICATION_FORM_URLENCODED_VALUE})
+    public void addFriendRequest(@RequestParam MultiValueMap<String,String> form,HttpServletRequest req,HttpServletResponse res){
+        String token=req.getHeader("Token");
+        String secondUser=form.getFirst("username2");
+        //i need to come with better names 
+        
+        if(token == null || (secondUser.length()==0)){
+            res.setStatus(400);
+            return;
+        }
+        int userid=tokenService.verifyToken(token);
+        try{
+            //you go here once
+            if(userid == -1){
+                res.sendError(404, "User not found");
+            }
+            if(userid == 500){
+                res.setStatus(500);
+            }
+        }catch(IOException e){
+            log.info(e);
+        }
+        
+        // boolean isOK=userService.sendFriendRequest(userid,username);
+        
+
+    } 
 
     // @PostMapping("/sendFriendRequest")
     // public String sendFriendRequest(@RequestParam("username")String username){

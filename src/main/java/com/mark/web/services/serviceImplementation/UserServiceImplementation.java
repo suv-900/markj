@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.mark.web.db.DatabaseConnections;
+import com.mark.web.models.Friend;
 import com.mark.web.models.FriendRequest;
 import com.mark.web.services.UserService;
 
@@ -198,26 +199,88 @@ public class UserServiceImplementation implements UserService {
         
     }
 
+    //checked
     public List<FriendRequest> getFriendRequests(int userid)throws SQLException{
-        String query="select from_user_id,created_at from friendRequests where to_user_id=?";
-        Connection con=datasource.getConnection();
-        PreparedStatement ps=con.prepareStatement(query);
-        ps.setInt(1,userid);
-            
-        ps.execute();
-        ResultSet rs=ps.getResultSet();
+        String query1="select from_user_id,created_at,username from friendRequests fr join users u on fr.from_user_id=u.user_id where to_user_id=?";
 
+        // String query="select from_user_id,created_at from friendRequests where to_user_id=?";
+        
+        
+        Connection con=datasource.getConnection();
+        PreparedStatement ps=con.prepareStatement(query1);
+        ps.setInt(1,userid);
+        
+        ps.execute(); 
+        
+        ResultSet rs=ps.getResultSet();
+        
+         
         List<FriendRequest> list=new LinkedList<FriendRequest>();
         while(rs.next()){
             int from_userId=(int) rs.getObject("from_user_id");
             int sentTime=(int) rs.getObject("created_at");
+            String username=(String)rs.getObject("username");
+
             FriendRequest frObj=new FriendRequest();
             frObj.setFromUserID(from_userId);
             frObj.setToUserID(userid);
             frObj.setTime(sentTime);
+            frObj.setSenderUsername(username);
             list.add(frObj);
         }
+        ps.close();
+        con.close();
+        
         return list;
+    }
+
+    public int getOnlineMembers()throws SQLException{
+        String query="select * from onlineUsers";
+
+        Connection con=datasource.getConnection();
+        PreparedStatement ps=con.prepareStatement(query);
+
+        ps.execute();
+
+        ResultSet rs=ps.getResultSet();
+        rs.next();
+        int totalOnlineMembers=(int)rs.getObject("online");
+
+        return totalOnlineMembers;
+    }
+
+    //checked
+    public List<Friend> getAllFriends(int userid)throws SQLException{
+        // String query1="select user_id,username,online,email from friends f join users u on f.users1_friend = u.user_id where f.user1 =?";
+        
+        String query="select getFriends(?)";
+        
+        Connection con=datasource.getConnection();
+        PreparedStatement ps=con.prepareStatement(query);
+        ps.setInt(1,userid);
+
+        ps.execute();
+       
+        ResultSet rs=ps.getResultSet();
+        List<Friend> friendsList=new LinkedList<Friend>();
+        while(rs.next()){
+            String username=(String)rs.getObject("username");
+            String email=(String)rs.getObject("email");
+            boolean userActive=(boolean)rs.getObject("online");
+            int friendUserID=(int)rs.getObject("user_id");
+            
+            Friend f=new Friend();
+            f.setUsername(username);
+            f.setOnline(userActive);
+            f.setEmailID(email);
+            f.setUserID(friendUserID);
+            friendsList.add(f);
+        }
+        
+        ps.close();
+        con.close();
+        
+        return friendsList;
     }
     public void acceptFriendRequest(String username1,int user2id)throws Exception{
 
