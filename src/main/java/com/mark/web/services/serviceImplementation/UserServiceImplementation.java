@@ -175,27 +175,35 @@ public class UserServiceImplementation implements UserService {
         return allInOne;
     }
 
-    public void sendFriendRequest(String username,int user1id) throws SQLException{
-        Connection con=null;
-        PreparedStatement ps=null; 
+    //write better exception handling
+    public void sendFriendRequest(String username,int user1id) throws Exception{
+        String query="insert into friendRequests(to_user_id,from_user_id) values(?,?)";
+        
+        Connection con=datasource.getConnection();
+        PreparedStatement ps=con.prepareStatement(query); 
+        
         //release all resources 
         try{
-            int user2id=getUserID(username); 
-            String query="insert into friendRequests(to_user_id,from_user_id) values(?,?)";
-            con=datasource.getConnection();
-            ps=con.prepareStatement(query);
+            int user2id=getUserID(username);
+            if(user2id == -1){
+                throw new Exception("user2 not found");
+            } 
             ps.setInt(1,user2id);
             ps.setInt(2,user1id);
             
             ps.executeUpdate();
+            con.commit();
             // log.info("Rows affected: "+ra);
 
         }catch(Exception e){
             log.info(e);
+            con.rollback();
+            throw e;
+        }finally{
             ps.close();
-            con.close();//might throw off the balcony
+            con.close();
         }
-    
+        
         
     }
 
@@ -325,17 +333,29 @@ public class UserServiceImplementation implements UserService {
     }
 
     public int getUserID(String username)throws Exception{
-        int user_id=-1;
+        int userid=-1;
         
         String query="select user_id from users where username=?";
         Connection con=datasource.getConnection();
         PreparedStatement ps=con.prepareStatement(query);
-        ps.setString(1,username);
-        ResultSet rs=ps.executeQuery();
-        rs.next();
-        user_id=(int)rs.getObject("user_id");
-        return user_id;
+       
+        try{
+            ps.setString(1,username);
+            ResultSet rs=ps.executeQuery();
+            if(rs.next()){
+                userid=(int)rs.getObject("user_id");
+            }
 
+        }catch(Exception e){
+            log.info(e);
+            throw e;
+        }finally{
+            ps.close();
+            con.close();
+        }
+
+        return userid;
+    
     }
  
     public void searchUser(){
