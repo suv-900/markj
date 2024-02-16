@@ -249,37 +249,45 @@ public class UserServiceImplementation implements UserService {
         return totalOnlineMembers;
     }
 
-    //checked
+    //refactor
     public List<Friend> getAllFriends(int userid)throws SQLException{
-        // String query1="select user_id,username,online,email from friends f join users u on f.users1_friend = u.user_id where f.user1 =?";
+        // String query="select user_id,username,online,email from friends f join users u on f.users1_friend = u.user_id where f.user1 =?";
         
-        String query="select getFriends(?)";
+        String query="select getfriends(?)";
         
+       
         Connection con=datasource.getConnection();
         PreparedStatement ps=con.prepareStatement(query);
-        ps.setInt(1,userid);
-
-        ps.execute();
-       
-        ResultSet rs=ps.getResultSet();
+        
         List<Friend> friendsList=new LinkedList<Friend>();
-        while(rs.next()){
-            String username=(String)rs.getObject("username");
-            String email=(String)rs.getObject("email");
-            boolean userActive=(boolean)rs.getObject("online");
-            int friendUserID=(int)rs.getObject("user_id");
-            
-            Friend f=new Friend();
-            f.setUsername(username);
-            f.setOnline(userActive);
-            f.setEmailID(email);
-            f.setUserID(friendUserID);
-            friendsList.add(f);
-        }
+
+        try{
+            ps.setInt(1,userid);
+            ps.execute();
+       
+            ResultSet rs=ps.getResultSet();
+            System.out.println("Warnings: "+rs.getWarnings());
         
-        ps.close();
-        con.close();
-        
+            while(rs.next()){
+                String username=(String)rs.getObject("username");
+                String email=(String)rs.getObject("email");
+                boolean userActive=(boolean)rs.getObject("online");
+                int friendUserID=(int)rs.getObject("user_id");
+                
+                Friend f=new Friend();
+                f.setUsername(username);
+                f.setOnline(userActive);
+                f.setEmailID(email);
+                f.setUserID(friendUserID);
+                friendsList.add(f);
+            }
+
+        }catch(SQLException e){
+            throw e;
+        }finally{
+            ps.close();
+            con.close();
+        } 
         return friendsList;
     }
     public void acceptFriendRequest(String username1,int user2id)throws Exception{
