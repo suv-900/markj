@@ -177,13 +177,17 @@ public class UserServiceImplementation implements UserService {
 
     //write better exception handling
     public void sendFriendRequest(String username,int user1id) throws Exception{
-        String query="insert into friendRequests(to_user_id,from_user_id) values(?,?)";
         
-        Connection con=datasource.getConnection();
-        PreparedStatement ps=con.prepareStatement(query); 
-        
-        //release all resources 
+        Connection con=null;
+        PreparedStatement ps=null;
+                //release all resources 
         try{
+            
+            String query="insert into friendRequests(to_user_id,from_user_id) values(?,?)";
+            
+            con=datasource.getConnection();
+            ps=con.prepareStatement(query); 
+
             int user2id=getUserID(username);
             if(user2id == -1){
                 throw new Exception("user2 not found");
@@ -200,8 +204,12 @@ public class UserServiceImplementation implements UserService {
             con.rollback();
             throw e;
         }finally{
-            ps.close();
-            con.close();
+           if( ps != null){
+                ps.close();
+           }
+           if( con != null){
+                con.close();
+           } 
         }
         
         
