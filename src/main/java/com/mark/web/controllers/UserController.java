@@ -289,46 +289,46 @@ public class UserController {
     }
 
 
-    @RequestMapping(path="/getFriendRequests",produces="application/json",method=RequestMethod.GET)
-    @ResponseBody
-    public List<FriendRequest> getFriendRequests(HttpServletRequest req,HttpServletResponse res){
-        List<FriendRequest> friendRequests=new LinkedList<FriendRequest>();
+    // @RequestMapping(path="/getFriendRequests",produces="application/json",method=RequestMethod.GET)
+    // @ResponseBody
+    // public List<FriendRequest> getFriendRequests(HttpServletRequest req,HttpServletResponse res){
+    //     List<FriendRequest> friendRequests=new LinkedList<FriendRequest>();
         
-        String token=req.getHeader("Token");
-        if(token == null){
-            res.setStatus(400);
-            return friendRequests;
-        }
+    //     String token=req.getHeader("Token");
+    //     if(token == null){
+    //         res.setStatus(400);
+    //         return friendRequests;
+    //     }
 
-        int userid=tokenService.verifyToken(token);
+    //     int userid=tokenService.verifyToken(token);
         
-        try{
-            if(userid == -1){
-                res.sendError(404, "User not found");
-                return friendRequests;
-            }
-            if(userid == 500){
-                res.setStatus(500);
-                return friendRequests;
-            }
-        }catch(IOException e){
-            log.info(e);
-        }
+    //     try{
+    //         if(userid == -1){
+    //             res.sendError(404, "User not found");
+    //             return friendRequests;
+    //         }
+    //         if(userid == 500){
+    //             res.setStatus(500);
+    //             return friendRequests;
+    //         }
+    //     }catch(IOException e){
+    //         log.info(e);
+    //     }
 
 
-        try{
-            friendRequests=userService.getFriendRequests(userid);
-        }catch(SQLException e){
-            log.info(e);
-            res.setStatus(500);
-            return friendRequests;
-        }
+    //     try{
+    //         friendRequests=userService.getFriendRequests(userid);
+    //     }catch(SQLException e){
+    //         log.info(e);
+    //         res.setStatus(500);
+    //         return friendRequests;
+    //     }
 
-        System.out.println("FriendRequests: "+friendRequests);
+    //     System.out.println("FriendRequests: "+friendRequests);
 
-        return friendRequests;
+    //     return friendRequests;
         
-    }
+    // }
 
     @RequestMapping(path="/getFriends",produces="application/json",method=RequestMethod.GET)
     @ResponseBody
@@ -353,14 +353,11 @@ public class UserController {
                 res.setStatus(500);
                 return friendsList;
             }
-        }catch(IOException e){
-            log.info(e);
-        }
        
-        try{
             friendsList=userService.getAllFriends(userid);
-        }catch(SQLException e){
+        }catch(Exception e){
             log.info(e);
+            e.printStackTrace();
             res.setStatus(500);
             return friendsList;
         } 
@@ -368,32 +365,69 @@ public class UserController {
         return friendsList;
        
     }
-
-    @PostMapping(path="/addFriendRequest",consumes={MediaType.APPLICATION_FORM_URLENCODED_VALUE})
-    public void addFriendRequest(@RequestParam MultiValueMap<String,String> form,HttpServletRequest req,HttpServletResponse res){
-        String token=req.getHeader("Token");
-        String secondUser=form.getFirst("username2");
-        //i need to come with better names 
+    @RequestMapping(path="/getPendingFriendRequests",produces="application/json",method=RequestMethod.GET)
+    @ResponseBody
+    public List<FriendRequest> getFriendRequests(HttpServletRequest req,HttpServletResponse res){
+        List<FriendRequest> list=new LinkedList<FriendRequest>();
         
-        if(token == null || (secondUser.length()==0)){
+        String token=req.getHeader("Token");
+        if(token == null){
             res.setStatus(400);
-            return;
+            return list;
         }
-        int userid=tokenService.verifyToken(token);
+        
         try{
-            //you go here once
+            int userid=tokenService.verifyToken(token);
             if(userid == -1){
                 res.sendError(404, "User not found");
+                return list;
             }
             if(userid == 500){
                 res.setStatus(500);
+                return list;
             }
-        }catch(IOException e){
+            list=userService.getFriendRequests(userid);
+            res.setStatus(200);
+        }catch(Exception e){
             log.info(e);
+            e.printStackTrace();
+            res.setStatus(500);
         }
         
-        // boolean isOK=userService.sendFriendRequest(userid,username);
+        return list;
+    }
+    @PostMapping(path="/sendFriendRequest",consumes={MediaType.APPLICATION_FORM_URLENCODED_VALUE})
+    public void sendFriendRequest(@RequestParam MultiValueMap<String,String> form,HttpServletRequest req,HttpServletResponse res){
         
+        String token=req.getHeader("Token");
+        String ToUsername=form.getFirst("ToUsername");
+        //i need to come with better names 
+        
+        if(token == null || (ToUsername.length()==0)){
+            res.setStatus(400);
+            return;
+        }
+        try{
+            //you go here once
+            
+            int userid=tokenService.verifyToken(token);
+            if(userid == -1){
+                // res.sendError(404, "User not found");
+                res.setStatus(404);
+                return;
+            }
+            if(userid == 500){
+                res.setStatus(500);
+                return;
+            }
+
+            userService.sendFriendRequest(ToUsername,userid);
+            res.setStatus(200);
+        }catch(Exception e){
+            log.info(e);
+            e.printStackTrace();
+            res.setStatus(500);
+        }
 
     } 
 

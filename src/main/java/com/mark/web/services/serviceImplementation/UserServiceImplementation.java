@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Time;
+import java.sql.Timestamp;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -30,58 +31,78 @@ public class UserServiceImplementation implements UserService {
     public int registerUser(String username,String password,String email)throws Exception{
             // String hashedPass=utils.encrypt(password); 
             
-            Connection con=datasource.getConnection();
-            // String query1="create table ?(request_id smallserial primarykey,requestuser_id smallserial references users(user_id),created_at timestamp defualt current_timestamp,pending boolean not null);"; 
-            String query="insert into users(username,password,email) values(?,?,?) returning user_id";
-            String userFriendRequests=username+"FriendRequests";
-            PreparedStatement ps=con.prepareStatement(query);
-            ps.setString(1,username);
-            ps.setString(2,password);
-            ps.setString(3,email);
-            ResultSet rs=ps.executeQuery(); 
-            // int rs=ps.executeUpdate();
-            rs.next();
-            int user_id=(int)rs.getObject("user_id");
-            // ps=null;
+            Connection con=null;
+            PreparedStatement ps=null;
+
+            try{
+                String query="insert into users(username,password,email) values(?,?,?) returning user_id";
+                
+                con=datasource.getConnection();
+                ps=con.prepareStatement(query);
+                
+                ps.setString(1,username);
+                ps.setString(2,password);
+                ps.setString(3,email);
+                
+                ResultSet rs=ps.executeQuery(); 
+                rs.next();
+                int userid=(int)rs.getObject("user_id");
+                return userid;
+            }catch(Exception e){
+                log.info(e);
+                throw e;
+            }finally{
+                if(ps != null){
+                    ps.close();
+                }
+                if(con != null){
+                    con.close();
+                }
+            }
+            
+
             // ps=con.prepareStatement(query1);
             // ps.setString(1,userFriendRequests);
             // System.out.println("PreparedStatment: "+ps.toString()); 
             // int rowsAffected=ps.executeUpdate(); 
             
             
-            ps.close();
-            con.close();
-            
-            return user_id;
     }
        public List<String> loginUser(String username)throws Exception{
         //raw password compare to encrypted password
-            Connection con=datasource.getConnection();
+
+            Connection con=null;
+            PreparedStatement ps=null;
+
+
+            try{
+                String query1="select user_id,password from users where username=? ";
+                con=datasource.getConnection();
             
-            String query1="select user_id,password from users where username=? ";
-            
-            PreparedStatement ps=con.prepareStatement(query1);
-            ps.setString(1,username);
-            
+                ps=con.prepareStatement(query1);
+                ps.setString(1,username);
           
-            ResultSet rs=ps.executeQuery();
-            rs.next();
+                ResultSet rs=ps.executeQuery();
+                rs.next();
            
-            List<String> list=new LinkedList<String>();
-            String dbPassword=(String)rs.getObject("password");
-            int userid=(int)rs.getObject("user_id");
-            
-            rs.close();
-            ps.close();
-            con.close();
+                List<String> list=new LinkedList<String>();
+                String dbPassword=(String)rs.getObject("password");
+                int userid=(int)rs.getObject("user_id");
+                list.add(dbPassword);
+                list.add(Integer.toString(userid));
+                return list;
 
-
-            list.add(dbPassword);
-            list.add(Integer.toString(userid));
-            return list;
-            // String decryptedText=utils.decrypt(dbPassword);
-            // System.out.println("DecryptedText: "+decryptedText);
-
+            }catch(Exception e){
+                log.info(e);
+                throw e;
+            }finally{
+                if(ps != null){
+                    ps.close();
+                }
+                if(con != null){
+                    con.close();
+                }
+            }
 
     }
 
@@ -148,60 +169,71 @@ public class UserServiceImplementation implements UserService {
     }
 
     public List<List<String>> getImages(int user_id)throws Exception{
-        String query="select image,image_description from images where user_id=?";
-        Connection con=datasource.getConnection();
-        PreparedStatement ps=con.prepareStatement(query);
-        ps.setInt(1,user_id);
 
-        ResultSet rs=ps.executeQuery();
+        Connection con=null;
+        PreparedStatement ps=null;
         
-        List<String> imagesList=new LinkedList<String>();
-        List<String> imageDescriptionList=new LinkedList<String>();
+        try{
+            String query="select image,image_description from images where user_id=?";
+            con=datasource.getConnection();
+            ps=con.prepareStatement(query);
+            ps.setInt(1,user_id);
 
-        while(rs.next()){
-            String image=(String)rs.getObject("images");
-            imagesList.add(image);
-            String imageDescription=(String)rs.getObject("image_description");
-            imageDescriptionList.add(imageDescription);
+            ResultSet rs=ps.executeQuery();
+        
+            List<String> imagesList=new LinkedList<String>();
+            List<String> imageDescriptionList=new LinkedList<String>();
+
+            while(rs.next()){
+                String image=(String)rs.getObject("images");
+                imagesList.add(image);
+                String imageDescription=(String)rs.getObject("image_description");
+                imageDescriptionList.add(imageDescription);
+            }
+
+            List<List<String>> allInOne=new LinkedList<List<String>>();
+            allInOne.add(imagesList);
+            allInOne.add(imageDescriptionList);
+
+            return allInOne;
+
+        }catch(Exception e){
+            log.info(e);
+            throw e;
+        }finally{
+            if( ps != null){
+                ps.close();
+            }           
+            
+            if( con != null){
+                con.close();
+            }
         }
-        rs.close();
-        ps.close();
-        con.close();
-
-        List<List<String>> allInOne=new LinkedList<List<String>>();
-        allInOne.add(imagesList);
-        allInOne.add(imageDescriptionList);
-
-        return allInOne;
+        
     }
 
     //write better exception handling
-    public void sendFriendRequest(String username,int user1id) throws Exception{
+    public void sendFriendRequest(String username,int fromUserID) throws Exception{
         
         Connection con=null;
         PreparedStatement ps=null;
                 //release all resources 
         try{
-            
+            int toUserID=getUserID(username);
+            if(toUserID == -1){
+                throw new Exception("user2 not found");
+            } 
             String query="insert into friendRequests(to_user_id,from_user_id) values(?,?)";
             
             con=datasource.getConnection();
             ps=con.prepareStatement(query); 
 
-            int user2id=getUserID(username);
-            if(user2id == -1){
-                throw new Exception("user2 not found");
-            } 
-            ps.setInt(1,user2id);
-            ps.setInt(2,user1id);
+            ps.setInt(1,toUserID);
+            ps.setInt(2,fromUserID);
             
             ps.executeUpdate();
-            con.commit();
-            // log.info("Rows affected: "+ra);
 
         }catch(Exception e){
-            log.info(e);
-            con.rollback();
             throw e;
         }finally{
            if( ps != null){
@@ -217,35 +249,48 @@ public class UserServiceImplementation implements UserService {
 
     //checked
     public List<FriendRequest> getFriendRequests(int userid)throws SQLException{
-        String query1="select from_user_id,created_at,username from friendRequests fr join users u on fr.from_user_id=u.user_id where to_user_id=?";
+
 
         // String query="select from_user_id,created_at from friendRequests where to_user_id=?";
+        Connection con=null;
+        PreparedStatement ps=null;
+        List<FriendRequest> list=new LinkedList<FriendRequest>();
+
+        try{
+            String query1="select fr.from_user_id,u.created_at,u.username from friendRequests fr join users u on fr.from_user_id=u.user_id where to_user_id=?";
+            
+            con=datasource.getConnection();
+            ps=con.prepareStatement(query1);
+            ps.setInt(1,userid);
         
+            ps.execute(); 
         
-        Connection con=datasource.getConnection();
-        PreparedStatement ps=con.prepareStatement(query1);
-        ps.setInt(1,userid);
-        
-        ps.execute(); 
-        
-        ResultSet rs=ps.getResultSet();
+            ResultSet rs=ps.getResultSet();
         
          
-        List<FriendRequest> list=new LinkedList<FriendRequest>();
-        while(rs.next()){
-            int from_userId=(int) rs.getObject("from_user_id");
-            int sentTime=(int) rs.getObject("created_at");
-            String username=(String)rs.getObject("username");
+            while(rs.next()){
+                int from_userId=(int) rs.getObject("from_user_id");
+                Timestamp sentTime=(Timestamp) rs.getObject("created_at");
+                String username=(String)rs.getObject("username");
 
-            FriendRequest frObj=new FriendRequest();
-            frObj.setFromUserID(from_userId);
-            frObj.setToUserID(userid);
-            frObj.setTime(sentTime);
-            frObj.setSenderUsername(username);
-            list.add(frObj);
+                FriendRequest frObj=new FriendRequest();
+                frObj.setFromUserID(from_userId);
+                frObj.setToUserID(userid);
+                frObj.setCreatedAt(sentTime);
+                frObj.setSenderUsername(username);
+                list.add(frObj);
+            }
+
+        }catch(Exception e){
+            throw e;
+        }finally{
+            if(ps != null){
+                ps.close();
+            }
+            if(con != null){
+                con.close();
+            }
         }
-        ps.close();
-        con.close();
         
         return list;
     }
@@ -265,19 +310,21 @@ public class UserServiceImplementation implements UserService {
         return totalOnlineMembers;
     }
 
-    //refactor
+    //refactor:postgres function
     public List<Friend> getAllFriends(int userid)throws SQLException{
-        // String query="select user_id,username,online,email from friends f join users u on f.users1_friend = u.user_id where f.user1 =?";
+        String query1="select user_id,username,online,email from friends f join users u on f.user2id = u.user_id where f.user1id =?";
+        String query2="select user_id,username,online,email from friends f join users u on f.user1id = u.user_id where f.user2id =?"; 
+        // String query="select getfriends(?)";
         
-        String query="select getfriends(?)";
-        
-       
-        Connection con=datasource.getConnection();
-        PreparedStatement ps=con.prepareStatement(query);
-        
+        Connection con=null;
+        PreparedStatement ps=null;
+
         List<Friend> friendsList=new LinkedList<Friend>();
 
         try{
+            con=datasource.getConnection();
+            ps=con.prepareStatement(query1);
+
             ps.setInt(1,userid);
             ps.execute();
        
@@ -297,17 +344,76 @@ public class UserServiceImplementation implements UserService {
                 f.setUserID(friendUserID);
                 friendsList.add(f);
             }
+            rs.close();
+            ps.close();
 
+            ps=con.prepareStatement(query2);
+            ps.setInt(1,userid);
+
+            ps.execute();
+       
+            rs=ps.getResultSet();
+            System.out.println("Warnings: "+rs.getWarnings());
+        
+            while(rs.next()){
+                String username=(String)rs.getObject("username");
+                String email=(String)rs.getObject("email");
+                boolean userActive=(boolean)rs.getObject("online");
+                int friendUserID=(int)rs.getObject("user_id");
+                
+                Friend f=new Friend();
+                f.setUsername(username);
+                f.setOnline(userActive);
+                f.setEmailID(email);
+                f.setUserID(friendUserID);
+                friendsList.add(f);
+            }
+            
         }catch(SQLException e){
             throw e;
         }finally{
-            ps.close();
-            con.close();
+            if( ps != null){
+                ps.close();
+            }
+            if(con != null){
+                con.close();
+            }
         } 
         return friendsList;
     }
-    public void acceptFriendRequest(String username1,int user2id)throws Exception{
+    public void acceptFriendRequest(String username,int ownerID)throws Exception{
+        Connection con=null;
+        PreparedStatement ps=null;
 
+        try{
+            int fromUserID=getUserID(username);
+            if(fromUserID == -1){
+                throw new Exception("fromUser not found");
+            }
+            con=datasource.getConnection();
+            String query1="delete from friendRequests where from_user_id=?"; 
+            ps=con.prepareStatement(query1);
+            ps.setInt(1,fromUserID);
+            ps.executeQuery();
+
+            ps.close();
+
+            String query2="insert into friends(user1ID,user2ID) values(?,?)";
+            ps=con.prepareStatement(query2);
+            ps.setInt(1,ownerID);
+            ps.setInt(2,fromUserID);
+            ps.executeQuery();
+
+        }catch(Exception e){
+            throw e;
+        }finally{
+            if(ps != null){
+                ps.close();
+            }
+            if(con != null){
+                con.close();
+            }
+        }
     }
     public void deleteUser(int id)throws SQLException{
         try{

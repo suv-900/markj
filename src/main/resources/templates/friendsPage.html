@@ -28,24 +28,15 @@
 </head>
 <body>
     <div class="container">
-        <div class="table">
-            <h2>Friends</h2>
-            <ul>
-                <li>Friend 1</li>
-                <li>Friend 2</li>
-                <li>Friend 3</li>
-                <li>Friend 4</li>
-                <li>Friend 5</li>
+        <div class="table"> 
+            <h2 id="friendsListHeader">Friends</h2>
+            <ul id="friendsList">
             </ul>
         </div>
-        <div class="table">
-            <h2>Friend Requests</h2>
-            <ul>
-                <li>Request 1</li>
-                <li>Request 2</li>
-                <li>Request 3</li>
-                <li>Request 4</li>
-                <li>Request 5</li>
+        <div id="friendRequestsList"  class="table">
+            <h2 id="friendRequestsHeader">Friend Requests</h2>
+            <ul id="friendRequestsList">
+                
             </ul>
         </div>
     </div>
@@ -56,7 +47,7 @@
     </div>
 
         <form id="addUserForm">
-            <input type="text" placeholder="add user" required/><br>
+            <input id="sendFriendRequestInput" type="text" placeholder="add user" required/><br>
             <button type="button" onclick="sendFriendRequest()" >send</button>
         </form>
         <div id="outputDiv" ></div>
@@ -123,17 +114,49 @@
                 if(xhttp.readyState === 4){
                     const status=xhttp.status;
                     if(status === 200){
-
+                        
+                        const friendsListNode=document.getElementById("friendsList");
                         friendsList=JSON.parse(xhttp.response);
+                        
+                        if(friendsList.length === 0){
+                            const e=document.getElementById("friendsListHeader");
+                            e.innerText="Friends 0";
+                            return;
+                        }
                         for(let i=0;i<friendsList.length;i++){
-                            const friend=document.createElement("")
+                            //id,username,email,online
+                            const friend=friendsList[i];
+
+                            const friendDiv=document.createElement("div");
+                            friendDiv.id=friend.userID;
+                            
+                            const username=document.createElement("a");
+                            username.href=`http://localhost:8080/users/getuser/${friend.username}`;
+                            username.text=friend.username;
+                            friendDiv.appendChild(username);
+
+                            const id=document.createElement("div");
+                            id.innerText=friend.userID;
+                            friendDiv.appendChild(id);
+                            
+                            const email=document.createElement("div");
+                            email.innerText=friend.emailID;
+                            friendDiv.appendChild(email);
+                            
+                            const online=document.createElement("div");
+                            online.innerText=friend.online;
+                            friendDiv.appendChild(online);
+                            
+                            const fList=document.createElement("li");
+                            fList.appendChild(friendDiv);
+
+                            friendsListNode.appendChild(fList);
                         } 
-                        return;
                     } 
-                    if(status === 500){
+                    else if(status === 500){
                         outputDiv.innerHTML="Server Error 500";
                     }
-                    if(status === 401){
+                    else if(status === 401){
                         const anchorElement=document.createElement("a");
                         anchorElement.href="localhost:8080/users/login";
                         anchorElement.text="login";
@@ -153,26 +176,79 @@
 
         async function fetchPendingFriendRequests(){
             const xhttp=new XMLHttpRequest();
-
             xhttp.onreadystatechange=()=>{
                 if(xhttp.readyState === 4){
+                    const status=xhttp.status;
+                    if(status === 200){
+                        
+                        requestList=JSON.parse(xhttp.response);
+                        
+                        console.log(requestList);
+                        
+                        if(requestList.length === 0){
+                            const e=document.getElementById("friendRequestsHeader");
+                            e.innerText="Friend Requests 0";
+                            return;
+                        }
+                        
+                        const friendRequestsList=document.getElementById("friendRequestsList");
+                       
+                        for(let i=0;i<requestList.length;i++){
+                            //id,username,email,online
+                            const request=requestList[i];
+
+                            const requestDiv=document.createElement("div");
+                            
+                            const requestText=document.createElement("div");
+                            requestText.innerText=request.senderUsername+" "+request.createdAt;
+                            requestDiv.appendChild(requestText);
+                            
+                            const acceptButton=document.createElement("button");
+                            acceptButton.type="button";
+                            acceptButton.innerText="accept";
+                            // acceptButton.onclick=()=>{acceptFriendRequest()};
+                            requestDiv.appendChild(acceptButton);
+
+                            const denyRequestButton=document.createElement("button");
+                            denyRequestButton.type="button";
+                            denyRequestButton.innerText="deny";
+                            // denyRequestButton.onclick=()=>{denyFriendRequest()};
+                            requestDiv.appendChild(denyRequestButton);
+
+                            friendRequestsList.appendChild(requestDiv);
+                        } 
+                    } 
+                    else if(status === 500){
+                        outputDiv.innerHTML="Server Error 500";
+                    }
+                    else if(status === 401){
+                        const anchorElement=document.createElement("a");
+                        anchorElement.href="localhost:8080/users/login";
+                        anchorElement.text="login";
+                        outputDiv.appendChild(anchorElement);
+                        outputDiv.innerHTML="Login Required";
+                    }else{
+                        console.log("Unknown status "+status);
+                    }
 
                 }
-            }
-
-            xhttp.open("GET","http://localhost:8080/users/getPendingFriendRequests",true);
-            xhttp.setRequestHeader("Token",token);
-            xhttp.send();
         }
-        
+        xhttp.open("GET","http://localhost:8080/users/getPendingFriendRequests",true);
+        xhttp.setRequestHeader("Token",token);
+        xhttp.send();
+    }
+    fetchPendingFriendRequests();        
 
-        async function sendFriendRequest(){
-            const toUsername=document.getElementById("addUserForm").elements[0];
-            if( isEmpty(toUsername)){
+    async function sendFriendRequest(){
+            
+        const toUsername=document.getElementById("sendFriendRequestInput").value;
+            
+        if( isEmpty(toUsername)){
                 outputDiv.innerHTML="empty fields";
                 return;
-            }
-
+        }
+        console.log("dasd"+toUsername);
+            
             const xhttp=new XMLHttpRequest();
 
             xhttp.onreadystatechange=()=>{
@@ -189,9 +265,10 @@
                 }
             }
 
-            xhttp.open("POST","localhost:8080/users/sendFriendRequest",true);
+            xhttp.open("POST","http://localhost:8080/users/sendFriendRequest",true);
             xhttp.setRequestHeader("Token",token);
-            xhttp.send(toUsername);
+            xhttp.setRequestHeader("Content-Type","application/x-www-form-urlencoded");
+            xhttp.send(`ToUsername=${toUsername}`);
         }
 
         
