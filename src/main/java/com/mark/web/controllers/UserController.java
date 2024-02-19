@@ -28,6 +28,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tomcat.util.codec.binary.Base64;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.google.gson.Gson;
 import com.mark.web.models.Friend;
 import com.mark.web.models.FriendRequest;
@@ -396,8 +397,10 @@ public class UserController {
         
         return list;
     }
+
+    @ResponseBody
     @PostMapping(path="/sendFriendRequest",consumes={MediaType.APPLICATION_FORM_URLENCODED_VALUE})
-    public void sendFriendRequest(@RequestParam MultiValueMap<String,String> form,HttpServletRequest req,HttpServletResponse res){
+    public String sendFriendRequest(@RequestParam MultiValueMap<String,String> form,HttpServletRequest req,HttpServletResponse res){
         
         String token=req.getHeader("Token");
         String ToUsername=form.getFirst("ToUsername");
@@ -405,31 +408,114 @@ public class UserController {
         
         if(token == null || (ToUsername.length()==0)){
             res.setStatus(400);
-            return;
+
+            return "Invalid Request";
         }
         try{
             //you go here once
             
             int userid=tokenService.verifyToken(token);
             if(userid == -1){
-                // res.sendError(404, "User not found");
-                res.setStatus(404);
-                return;
+                res.setStatus(400);
+                return "Bad token";
             }
             if(userid == 500){
                 res.setStatus(500);
-                return;
+                return "Server Error";
             }
 
             userService.sendFriendRequest(ToUsername,userid);
             res.setStatus(200);
+            return "OK";
         }catch(Exception e){
             log.info(e);
-            e.printStackTrace();
+            
             res.setStatus(500);
+            return e.getMessage();
         }
 
-    } 
+    }
+    
+    @ResponseBody
+    @RequestMapping(path="/acceptFriendRequest",method=RequestMethod.POST)
+    public String acceptFriendRequest(HttpServletRequest req,HttpServletResponse res){
+        
+        String token=req.getHeader("Token");
+        String username=req.getParameter("username"); 
+        if(token == null ||  username.length()==0 ){
+            res.setStatus(400);
+            return "Invalid Request";
+        }
+        
+        
+        try{
+            //you go here once
+            
+            int userid=tokenService.verifyToken(token);
+            if(userid == -1){
+                res.setStatus(400);
+                return "Bad token";
+            }
+            if(userid == 500){
+                res.setStatus(500);
+                return "Server Error";
+            }
+            
+            Friend friend=userService.acceptFriendRequest(username, userid);
+            res.setStatus(200);
+            return "OK";
+        }catch(Exception e){
+            log.info(e);
+            e.printStackTrace(); 
+            res.setStatus(500);
+            return e.getMessage();
+        }
+
+
+    }
+
+    @ResponseBody
+    @RequestMapping(path="/getOneFriend",method=RequestMethod.GET)
+    public Friend getFriend(HttpServletRequest req,HttpServletResponse res){
+        Friend friend=new Friend();    
+        
+        String token=req.getHeader("Token");
+        String uid=req.getParameter("userID"); 
+
+        if(token == null ||  uid.length()==0 ){
+            res.setStatus(400);
+            return friend;
+        }
+        
+        int userID=Integer.parseInt(uid);
+        
+        
+        try{
+            //you go here once
+            
+            int userid=tokenService.verifyToken(token);
+            if(userid == -1){
+                res.setStatus(400);
+                return friend;
+            }
+            if(userid == 500){
+                res.setStatus(500);
+                return friend; 
+            }
+            
+            friend=userService.getFriend(userID);
+            res.setStatus(200);
+            return friend;
+        }catch(Exception e){
+            log.info(e);
+            e.printStackTrace(); 
+            res.setStatus(500);
+            return friend;
+        }
+
+
+
+    }
 
     // @PostMapping("/sendFriendRequest")
     // public String sendFriendRequest(@RequestParam("username")String username){

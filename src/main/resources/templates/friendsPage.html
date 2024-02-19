@@ -24,6 +24,7 @@
         .table li {
             margin-bottom: 5px;
         }
+        
     </style>
 </head>
 <body>
@@ -50,7 +51,9 @@
             <input id="sendFriendRequestInput" type="text" placeholder="add user" required/><br>
             <button type="button" onclick="sendFriendRequest()" >send</button>
         </form>
+        <div id="requestStatusDiv" ></div>
         <div id="outputDiv" ></div>
+        <div id="friendRequestStatusDiv" ></div>
     </body>
     <script>
         //show friends and pending friend requests;
@@ -60,7 +63,8 @@
         
         const token=localStorage.getItem("Token");
         const outputDiv=document.getElementById("outputDiv");
-        
+        let tokenValid=false;
+
         if(token === null){
             outputDiv.innerHTML="Login required";
             const anchorElement=document.createElement("a");
@@ -81,6 +85,7 @@
                 if(xhttp.readyState === 4){
                     const status=xhttp.status;
                     if(status === 200){
+                        tokenValid=true;
                         return;
                     } 
                     if(status === 500){
@@ -103,11 +108,105 @@
             xhttp.send();
         }
         checkToken(); 
+    
+        class Node{
+            constructor(data){
+                this.data=data;
+                this.prev=null;
+                this.next=null
+            }
+        }
+
+        class LinkedList{
+            constructor(){
+                this.head=null;
+                this.tail=null;
+                this.length=0;
+            }
+
+            add(data){
+                const newNode=new Node(data);
+                if(this.head === null){
+                    this.head=newNode;
+                    this.tail=this.head;
+                    this.length++;
+                    return this;
+                }else{
+                    this.tail.next=newNode;
+                    newNode.prev=this.tail;
+                    this.tail=newNode;
+                    this.length++;
+                    return this;
+                }
+            }
+
+            pop(){
+                if(this.head === null){
+                    return;
+                }else{
+                
+                this.tail=this.tail.prev;
+                this.tail.next=null;
+                this.length--;
+                }
+            }
+
+            get(index){
+                if(index < this.length && index>=0 ){
+                    let temp=this.head;
+                    for(let i=0;i<index;i++){
+                       temp=temp.next; 
+                    }
+                    return temp.data;
+                }else{
+                    throw new RangeError("Index out of bounds");
+                }
+            
+            }
+            removeAt(index){
+                if(index < this.length && index >= 0){
+                    if(index === this.length-1){
+                        this.pop();
+                        return;
+                    }
+                    if(index === 0){
+                        this.head=this.head.next;
+                        this.length--;
+                        return;
+                    }
+                    let temp=this.head;
+                    for(let i=0;i<index;i++){
+                       temp=temp.next; 
+                    }
+                    temp.prev=temp.next;
+                    temp.next.prev=temp.prev;
+                    temp=null;
+                    this.length--;
+                }else{
+                    throw new RangeError("Index out of bounds");
+                }
+            }
+            
+        }
+
         
-        let friendsList=[]
-        const friendRequestsList=[]
+        let friendsListDiv=document.getElementById("friendsList");
+        let friendRequestDiv=document.getElementById("friendRequestsList");
+        const friendRequestsList=new LinkedList();
+        const friendsList=new LinkedList();
+
+        setTimeout(()=>{
+            if(tokenValid){
+                fetchFriendsList();
+                fetchPendingFriendRequests();
+            }
+        },800);
 
         async function fetchFriendsList(){
+            if(!tokenValid) {
+                return;
+            } 
+
             const xhttp=new XMLHttpRequest();
 
             xhttp.onreadystatechange=()=>{
@@ -115,17 +214,16 @@
                     const status=xhttp.status;
                     if(status === 200){
                         
-                        const friendsListNode=document.getElementById("friendsList");
-                        friendsList=JSON.parse(xhttp.response);
+                        const friendsListJSON=JSON.parse(xhttp.response);
                         
-                        if(friendsList.length === 0){
+                        if(friendsListJSON.length === 0){
                             const e=document.getElementById("friendsListHeader");
                             e.innerText="Friends 0";
                             return;
                         }
-                        for(let i=0;i<friendsList.length;i++){
+                        for(let i=0;i<friendsListJSON.length;i++){
                             //id,username,email,online
-                            const friend=friendsList[i];
+                            const friend=friendsListJSON[i];
 
                             const friendDiv=document.createElement("div");
                             friendDiv.id=friend.userID;
@@ -148,9 +246,11 @@
                             friendDiv.appendChild(online);
                             
                             const fList=document.createElement("li");
+                            fList.id=friend.userID;
                             fList.appendChild(friendDiv);
 
-                            friendsListNode.appendChild(fList);
+                            friendsList.add(friendDiv);
+                            friendsListDiv.appendChild(fList);
                         } 
                     } 
                     else if(status === 500){
@@ -174,16 +274,18 @@
         } 
         fetchFriendsList();
 
+
         async function fetchPendingFriendRequests(){
+            if(!tokenValid) return; 
+            
             const xhttp=new XMLHttpRequest();
             xhttp.onreadystatechange=()=>{
                 if(xhttp.readyState === 4){
                     const status=xhttp.status;
                     if(status === 200){
                         
-                        requestList=JSON.parse(xhttp.response);
+                        const requestList=JSON.parse(xhttp.response);
                         
-                        console.log(requestList);
                         
                         if(requestList.length === 0){
                             const e=document.getElementById("friendRequestsHeader");
@@ -191,14 +293,14 @@
                             return;
                         }
                         
-                        const friendRequestsList=document.getElementById("friendRequestsList");
                        
                         for(let i=0;i<requestList.length;i++){
                             //id,username,email,online
                             const request=requestList[i];
 
                             const requestDiv=document.createElement("div");
-                            
+                            requestDiv.id=i;
+
                             const requestText=document.createElement("div");
                             requestText.innerText=request.senderUsername+" "+request.createdAt;
                             requestDiv.appendChild(requestText);
@@ -206,7 +308,7 @@
                             const acceptButton=document.createElement("button");
                             acceptButton.type="button";
                             acceptButton.innerText="accept";
-                            // acceptButton.onclick=()=>{acceptFriendRequest()};
+                            acceptButton.onclick=()=>{acceptFriendRequest(request.fromUserID,request.senderUsername,i)};
                             requestDiv.appendChild(acceptButton);
 
                             const denyRequestButton=document.createElement("button");
@@ -215,7 +317,8 @@
                             // denyRequestButton.onclick=()=>{denyFriendRequest()};
                             requestDiv.appendChild(denyRequestButton);
 
-                            friendRequestsList.appendChild(requestDiv);
+                            friendRequestsList.add(requestDiv);
+                            friendRequestDiv.appendChild(requestDiv);
                         } 
                     } 
                     else if(status === 500){
@@ -240,28 +343,30 @@
     fetchPendingFriendRequests();        
 
     async function sendFriendRequest(){
+        if(!tokenValid) return; 
             
         const toUsername=document.getElementById("sendFriendRequestInput").value;
             
         if( isEmpty(toUsername)){
-                outputDiv.innerHTML="empty fields";
+                requestStatusDiv.innerHTML="empty fields";
                 return;
         }
-        console.log("dasd"+toUsername);
             
             const xhttp=new XMLHttpRequest();
-
+            const requestStatusDiv=document.getElementById("requestStatusDiv");
             xhttp.onreadystatechange=()=>{
                 if(xhttp.readyState === 4){
                     const status=xhttp.status;
-                    if(status === 200){
-                        requestStatusDiv.innerHTML="Request sent";
-                    }
-                    if(status === 500){
-                        requestStatusDiv.innerHTML="Server Error";
-                    }else{
-                        console.log("Unknown status: "+status);
-                    }
+                    const responseBody=xhttp.response;
+                    requestStatusDiv.innerText=responseBody;
+                    // if(status === 200){
+                    //     requestStatusDiv.innerText="Request sent 200";
+                    // }
+                    // else if(status === 500){
+                    //     requestStatusDiv.innerText="Server Error 500";
+                    // }else{
+                    //     requestStatusDiv.innerText="Unknown error "+status;
+                    // }
                 }
             }
 
@@ -271,7 +376,105 @@
             xhttp.send(`ToUsername=${toUsername}`);
         }
 
+        async function acceptFriendRequest(fromUserID,username,index){
+            if(!tokenValid) return; 
+            
+            const fsDiv=document.getElementById("friendRequestStatusDiv");
+            fsDiv.innerText="";
+
+            if(isEmpty(username)){
+                fsDiv.innerText="Bad Element";
+                return;
+            }
+
+            const xhttp=new XMLHttpRequest();
+
+            xhttp.onreadystatechange=()=>{
+                if(xhttp.readyState === 4){
+                    if(xhttp.status === 200){
+                        addFriendToList(fromUserID,index);
+                    }else{
+                        setTimeout(()=>{
+                            fsDiv.innerText=xhttp.response+" "+xhttp.status;
+                        },1000);
+                    }
+
+                }
+            }
+
+            xhttp.open("POST",`http://localhost:8080/users/acceptFriendRequest?username=${username}`,true);
+            xhttp.setRequestHeader("Token",token);
+            xhttp.send();
+        }
+
+        function findNode(list,index){
+            for(let i=0;i<list.length;i++){
+                if(list[i].id === index){
+                    return list[i];
+                }
+            }
+            outputDiv.innerText="Node not found";
+            return null;
+        }
         
+        async function addFriendToList(userID,index){
+            if(userID === undefined){
+                console.log("userID undefined");
+                return;
+            }
+            const xhttp=new XMLHttpRequest();
+
+            const fsDiv=document.getElementById("friendRequestStatusDiv");
+            xhttp.onreadystatechange=()=>{
+                if(xhttp.readyState === 4){
+                    if(xhttp.status === 200){
+
+                    const friend=JSON.parse(xhttp.response);
+                        setTimeout(()=>{
+
+                            const friendDiv=document.createElement("div");
+                            friendDiv.id=friend.userID;
+                            
+                            const username=document.createElement("a");
+                            username.href=`http://localhost:8080/users/getuser/${friend.username}`;
+                            username.text=friend.username;
+                            friendDiv.appendChild(username);
+
+                            const id=document.createElement("div");
+                            id.innerText=friend.userID;
+                            friendDiv.appendChild(id);
+                            
+                            const email=document.createElement("div");
+                            email.innerText=friend.emailID;
+                            friendDiv.appendChild(email);
+                            
+                            const online=document.createElement("div");
+                            online.innerText=friend.online;
+                            friendDiv.appendChild(online);
+                            
+                            const fList=document.createElement("li");
+                            fList.id=friend.userID;
+                            fList.appendChild(friendDiv);
+                            let a=[];
+                            
+                            friendsList.add(friendDiv);
+                            friendsListDiv.appendChild(fList);
+                            
+                            friendRequestDiv.removeChild(friendRequestsList.get(index));
+                            friendRequestsList.removeAt(index);
+                            fsDiv.innerText="OK";
+                        },500);
+                    }else{
+                        fsDiv.innerText="Error";
+                    } 
+
+                }
+            }
+
+            xhttp.open("GET",`http://localhost:8080/users/getOneFriend?userID=${userID}`,true);
+            xhttp.setRequestHeader("Token",token);
+            xhttp.send();
+        }
 
     </script>
 </html>

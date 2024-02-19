@@ -17,6 +17,7 @@ import org.apache.logging.log4j.Logger;
 import com.mark.web.db.DatabaseConnections;
 import com.mark.web.models.Friend;
 import com.mark.web.models.FriendRequest;
+import com.mark.web.models.User;
 import com.mark.web.services.UserService;
 
 public class UserServiceImplementation implements UserService {
@@ -221,12 +222,25 @@ public class UserServiceImplementation implements UserService {
         try{
             int toUserID=getUserID(username);
             if(toUserID == -1){
-                throw new Exception("user2 not found");
-            } 
-            String query="insert into friendRequests(to_user_id,from_user_id) values(?,?)";
-            
+                throw new Exception("to_user_id not found");
+            }
+            String query1="select * from friendRequests where to_user_id=? and from_user_id=?";
             con=datasource.getConnection();
-            ps=con.prepareStatement(query); 
+            ps=con.prepareStatement(query1);
+            ps.setInt(1,toUserID);
+            ps.setInt(2,fromUserID);
+    
+            ResultSet rs=ps.executeQuery();
+
+            if(rs.next()){
+                //request exists
+                throw new Exception("Request already exists.");
+            }
+            ps.close();
+
+            String query2="insert into friendRequests(to_user_id,from_user_id) values(?,?)";
+            
+            ps=con.prepareStatement(query2); 
 
             ps.setInt(1,toUserID);
             ps.setInt(2,fromUserID);
@@ -353,8 +367,7 @@ public class UserServiceImplementation implements UserService {
             ps.execute();
        
             rs=ps.getResultSet();
-            System.out.println("Warnings: "+rs.getWarnings());
-        
+            
             while(rs.next()){
                 String username=(String)rs.getObject("username");
                 String email=(String)rs.getObject("email");
@@ -381,7 +394,7 @@ public class UserServiceImplementation implements UserService {
         } 
         return friendsList;
     }
-    public void acceptFriendRequest(String username,int ownerID)throws Exception{
+    public Friend acceptFriendRequest(String username,int ownerID)throws Exception{
         Connection con=null;
         PreparedStatement ps=null;
 
@@ -390,11 +403,37 @@ public class UserServiceImplementation implements UserService {
             if(fromUserID == -1){
                 throw new Exception("fromUser not found");
             }
+
+            String query3="select * from friends where user1ID=? and user2ID=?";
             con=datasource.getConnection();
+            ps=con.prepareStatement(query3);
+            ps.setInt(1,ownerID);
+            ps.setInt(2,fromUserID);
+
+            ResultSet rs=ps.executeQuery();
+            if(rs.next()){
+                throw new Exception("Already friends.");
+            }
+            rs.close();
+            ps.close();
+
+            String query4="select * from friends where user1ID=? and user2ID=?";
+            ps=con.prepareStatement(query4);
+            ps.setInt(1,fromUserID);
+            ps.setInt(2,ownerID);
+
+            rs=ps.executeQuery();
+            if(rs.next()){
+                throw new Exception("Already friends.");
+            }
+            rs.close();
+            ps.close();
+            
+
             String query1="delete from friendRequests where from_user_id=?"; 
             ps=con.prepareStatement(query1);
             ps.setInt(1,fromUserID);
-            ps.executeQuery();
+            ps.executeUpdate();
 
             ps.close();
 
@@ -402,8 +441,26 @@ public class UserServiceImplementation implements UserService {
             ps=con.prepareStatement(query2);
             ps.setInt(1,ownerID);
             ps.setInt(2,fromUserID);
-            ps.executeQuery();
+            ps.executeUpdate();
 
+            String query5="select username,email,online from users where user_id=?";
+            ps=con.prepareStatement(query5);
+            ps.setInt(1,fromUserID);
+
+            rs=ps.executeQuery();
+            rs.next();
+
+            Friend friend =new Friend();
+            String usernameF=(String) rs.getObject("username");
+            String email=(String)rs.getObject("email");
+            boolean online=(boolean)rs.getObject("online");
+            
+            friend.setUsername(usernameF);
+            friend.setEmailID(email);
+            friend.setOnline(online);
+            friend.setUserID(fromUserID);
+            
+            return friend;
         }catch(Exception e){
             throw e;
         }finally{
@@ -414,6 +471,43 @@ public class UserServiceImplementation implements UserService {
                 con.close();
             }
         }
+    }
+    public Friend getFriend(int userID)throws Exception{
+        Connection con=null;
+        PreparedStatement ps=null;
+
+        try{
+            String query="select username,email,online from users where user_id=?";
+            con=datasource.getConnection();
+            ps=con.prepareStatement(query);
+            ps.setInt(1,userID);
+
+            ResultSet rs=ps.executeQuery();
+            rs.next();
+
+            Friend friend=new Friend();
+            String usernameF=(String) rs.getObject("username");
+            String email=(String)rs.getObject("email");
+            boolean online=(boolean)rs.getObject("online");
+            
+            friend.setUsername(usernameF);
+            friend.setEmailID(email);
+            friend.setOnline(online);
+            friend.setUserID(userID);
+            
+            return friend;
+        
+        }catch(Exception e){
+            throw e;
+        }finally{
+            if(ps != null){
+                ps.close();
+            }
+            if(con != null){
+                con.close();
+            }
+        }
+           
     }
     public void deleteUser(int id)throws SQLException{
         try{
@@ -433,18 +527,18 @@ public class UserServiceImplementation implements UserService {
 
     }
     
-    public void getUser(int id)throws SQLException{
-        try{
-            Connection con=datasource.getConnection();
-            String query="select (username,online) from users where userID=?";
-            PreparedStatement ps=con.prepareStatement(query);
-            ps.setString(1,Integer.toString(id));
-            ResultSet rs=ps.executeQuery();
-            System.out.println(rs);
-        }catch(SQLException e){
-            e.printStackTrace();
-        }
-    }
+    // public void getUser(int id)throws SQLException{
+    //     try{
+    //         Connection con=datasource.getConnection();
+    //         String query="select (username,online) from users where userID=?";
+    //         PreparedStatement ps=con.prepareStatement(query);
+    //         ps.setString(1,Integer.toString(id));
+    //         ResultSet rs=ps.executeQuery();
+    //         System.out.println(rs);
+    //     }catch(SQLException e){
+    //         e.printStackTrace();
+    //     }
+    // }
 
     public int getUserID(String username)throws Exception{
         int userid=-1;
