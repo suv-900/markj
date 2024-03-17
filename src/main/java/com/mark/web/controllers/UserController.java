@@ -353,6 +353,11 @@ public class UserController {
         try{
             int userid=tokenService.verifyToken(token);
             friendsList=userService.getAllFriends(userid);
+
+            Gson gson=new Gson();
+            String str=gson.toJson(friendsList);
+            response.setStatus(200);
+            return str;
         }catch(JWTVerificationException e){
            log.warn(e.getMessage());
            response.setStatus(401);
@@ -364,224 +369,230 @@ public class UserController {
             return "Server Error";
         }
         catch(Exception e){
-            log.info(e.getMessage());
-            e.printStackTrace();
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         } 
-        Gson gson=new Gson();
-        String friendsListString=gson.toJson(friendsList);
-        response.setStatus(200);
-        return friendsListString;
        
     }
 
     @RequestMapping(path="/getPendingFriendRequests",produces="application/json",method=RequestMethod.GET)
     @ResponseBody
-    public List<FriendRequest> getFriendRequests(HttpServletRequest req,HttpServletResponse res){
-        List<FriendRequest> list=new LinkedList<FriendRequest>();
+    public String getFriendRequests(HttpServletRequest request,HttpServletResponse response){
         
-        String token=req.getHeader("Token");
+        String token=request.getHeader("Token");
         if(token == null){
-            res.setStatus(400);
-            return list;
+            response.setStatus(401);
+            return "Token Not Found";
         }
         
+        List<FriendRequest> list=new LinkedList<FriendRequest>();
         try{
             int userid=tokenService.verifyToken(token);
-            if(userid == -1){
-                res.sendError(404, "User not found");
-                return list;
-            }
-            if(userid == 500){
-                res.setStatus(500);
-                return list;
-            }
             list=userService.getFriendRequests(userid);
-            res.setStatus(200);
-        }catch(Exception e){
-            log.info(e.getMessage());
-            e.printStackTrace();
-            res.setStatus(500);
+
+            Gson gson=new Gson();
+            String str=gson.toJson(list);
+            response.setStatus(200); 
+            return str;
+        }
+        catch(JWTVerificationException e){
+           log.warn(e.getMessage());
+           response.setStatus(401);
+           return e.getMessage(); 
+        }
+        catch(NumberFormatException e){
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
+        }
+        catch(Exception e){
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
         }
         
-        return list;
     }
 
     @ResponseBody
     @PostMapping(path="/sendFriendRequest",consumes={MediaType.APPLICATION_FORM_URLENCODED_VALUE})
-    public String sendFriendRequest(@RequestParam MultiValueMap<String,String> form,HttpServletRequest req,HttpServletResponse res){
+    public String sendFriendRequest(@RequestParam MultiValueMap<String,String> form,HttpServletRequest request,HttpServletResponse response){
         
-        String token=req.getHeader("Token");
+        String token=request.getHeader("Token");
         String ToUsername=form.getFirst("ToUsername");
         //i need to come with better names 
         
-        if(token == null || (ToUsername.length()==0)){
-            res.setStatus(400);
-
-            return "Invalid Request";
+        if(token == null){
+            response.setStatus(401);
+            return "Token not found.";
         }
+        if(ToUsername.length() == 0){
+            response.setStatus(400);
+            return "ToUsername not found";
+        } 
         try{
-            //you go here once
             
             int userid=tokenService.verifyToken(token);
-            if(userid == -1){
-                res.setStatus(400);
-                return "Bad token";
-            }
-            if(userid == 500){
-                res.setStatus(500);
-                return "Server Error";
-            }
-
             userService.sendFriendRequest(ToUsername,userid);
-            res.setStatus(200);
+
+            response.setStatus(200);
             return "OK";
-        }catch(Exception e){
+        }catch(JWTVerificationException e){
+           log.warn(e.getMessage());
+           response.setStatus(401);
+           return e.getMessage(); 
+        }
+        catch(NumberFormatException e){
+            response.setStatus(500);
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            return "Server Error";
+        }
+        catch(Exception e){
             log.info(e.getMessage());
-            
-            res.setStatus(500);
-            return e.getMessage();
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
         }
 
     }
     
     @ResponseBody
     @RequestMapping(path="/denyFriendRequest",method=RequestMethod.POST)
-    public String acceptFriendRequest(HttpServletRequest req,HttpServletResponse res){
+    public String denyFriendRequest(HttpServletRequest request,HttpServletResponse response){
         
-        String token=req.getHeader("Token");
-        String fs=req.getParameter("fromUserID"); 
-        if(token == null ||  fs == null ){
-            res.setStatus(400);
-            return "Invalid Request";
+        String token=request.getHeader("Token");
+        String fs=request.getParameter("fromUserID"); 
+        
+        if(token == null){
+            response.setStatus(401);
+            return "Token not found.";
         }
-        
+        if(fs.length() == 0){
+            response.setStatus(400);
+            return "fromUserID not found";
+        }
         
         try{
             //you go here once
             int fromUserID=Integer.parseInt(fs);
-
             int toUserID=tokenService.verifyToken(token);
-            if(toUserID== -1){
-                res.setStatus(400);
-                return "Bad token";
-            }
-            if(toUserID == 500){
-                res.setStatus(500);
-                return "Server Error";
-            }
-            
             userService.denyFriendRequest(fromUserID, toUserID);
-            res.setStatus(200);
+            
+            response.setStatus(200);
             return "OK";
-        }catch(Exception e){
+        }catch(JWTVerificationException e){
+           log.warn(e.getMessage());
+           response.setStatus(401);
+           return e.getMessage(); 
+        }
+        catch(NumberFormatException e){
+            response.setStatus(500);
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            return "Server Error";
+        }
+        catch(Exception e){
             log.info(e.getMessage());
-            e.printStackTrace(); 
-            res.setStatus(500);
-            return e.getMessage();
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
         }
 
 
     }
 
-    @ResponseBody
     @RequestMapping(path="/acceptFriendRequest",method=RequestMethod.POST)
-    public String denyFriendRequest(HttpServletRequest req,HttpServletResponse res){
-        
-        String token=req.getHeader("Token");
-        String username=req.getParameter("username"); 
-        if(token == null ||  username.length()==0 ){
-            res.setStatus(400);
-            return "Invalid Request";
-        }
-        
-        
-        try{
-            //you go here once
-            
-            int userid=tokenService.verifyToken(token);
-            if(userid == -1){
-                res.setStatus(400);
-                return "Bad token";
-            }
-            if(userid == 500){
-                res.setStatus(500);
-                return "Server Error";
-            }
-            
-            userService.acceptFriendRequest(username, userid);
-            res.setStatus(200);
-            return "OK";
-        }catch(Exception e){
-            log.info(e.getMessage());
-            e.printStackTrace(); 
-            res.setStatus(500);
-            return e.getMessage();
-        }
-
-
-    }
-    
     @ResponseBody
-    @RequestMapping(path="/getOneFriend",method=RequestMethod.GET)
-    public Friend getFriend(HttpServletRequest req,HttpServletResponse res){
-        Friend friend=new Friend();    
+    public String acceptFriendRequest(HttpServletRequest request,HttpServletResponse response){
         
-        String token=req.getHeader("Token");
-        String uid=req.getParameter("userID"); 
-
-        if(token == null ||  uid.length()==0 ){
-            res.setStatus(400);
-            return friend;
+        String token=request.getHeader("Token");
+        String username=request.getParameter("username"); 
+        if(token == null){
+            response.setStatus(401);
+            return "Token not found.";
+        }
+        if(username.length() == 0){
+            response.setStatus(400);
+            return "fromUserID not found";
         }
         
-        int userID=Integer.parseInt(uid);
+        try{
+            int userid=tokenService.verifyToken(token);
+            userService.acceptFriendRequest(username, userid);
+            
+            response.setStatus(200);
+            return "OK";
+        }catch(JWTVerificationException e){
+           log.warn(e.getMessage());
+           response.setStatus(401);
+           return e.getMessage(); 
+        }
+        catch(NumberFormatException e){
+            response.setStatus(500);
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            return "Server Error";
+        }
+        catch(Exception e){
+            log.info(e.getMessage());
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
+        }
+
+
+    }
+    
+    @RequestMapping(path="/getOneFriend",method=RequestMethod.GET)
+    @ResponseBody
+    public String getFriend(HttpServletRequest request,HttpServletResponse response){
         
+        String token=request.getHeader("Token");
+        String uid=request.getParameter("userID"); 
+
+        if(token == null){
+            response.setStatus(401);
+            return "Token not found.";
+        }
+        if(uid == null){
+            response.setStatus(400);
+            return "userID not found";
+        }
         
         try{
             //you go here once
             
-            int userid=tokenService.verifyToken(token);
-            if(userid == -1){
-                res.setStatus(400);
-                return friend;
-            }
-            if(userid == 500){
-                res.setStatus(500);
-                return friend; 
-            }
-            
+            Friend friend=new Friend();    
+            int userID=Integer.parseInt(uid);
+            tokenService.verifyToken(token);
             friend=userService.getFriend(userID);
-            res.setStatus(200);
-            return friend;
-        }catch(Exception e){
+            
+            Gson gson=new Gson();
+            String str=gson.toJson(friend);
+            response.setStatus(200);
+            return str;
+        }catch(JWTVerificationException e){
+           log.warn(e.getMessage());
+           response.setStatus(401);
+           return e.getMessage(); 
+        }
+        catch(NumberFormatException e){
+            response.setStatus(500);
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            return "Server Error";
+        }
+        catch(Exception e){
             log.info(e.getMessage());
-            e.printStackTrace(); 
-            res.setStatus(500);
-            return friend;
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
         }
 
-
-
     }
-
-    // @PostMapping("/sendFriendRequest")
-    // public String sendFriendRequest(@RequestParam("username")String username){
-    //     //validate user request
-    //     //get username send request to the user 
-    //     //check for pending and accepted request
-    // }
-    
-    // @GetMapping("/viewFriendRequets")
-    // public String viewFriendRequests(){
-
-    // }
-
-    // @RequestMapping(value="find_user",method=RequestMethod.POST)
-    // public void findUser(@RequestParam("username")String username){
-    //    boolean finduser=userService.checkUsername(username);
-
-    // }
     
 }
