@@ -347,7 +347,6 @@ public class UserServiceImplementation implements UserService {
             ps.execute();
        
             ResultSet rs=ps.getResultSet();
-            System.out.println("Warnings: "+rs.getWarnings());
         
             while(rs.next()){
                 String username=(String)rs.getObject("username");

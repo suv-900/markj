@@ -76,11 +76,6 @@ public class UserController {
         return "OK";
 
     }
-    
-    @GetMapping("/uploadImage")
-    public String sendUploadFile(){
-        return "uploadImage";
-    }
 
     @PostMapping(path="/uploadImage")
     public String getFile(@RequestBody MultipartFile file,HttpServletResponse response,HttpServletRequest request){
@@ -211,16 +206,7 @@ public class UserController {
 
     }
 
-    @GetMapping("/logerror")
-    public void logError(){
-        try{
-            throw new Exception("Hi");
-
-        }catch(Exception e){
-            logwriter.write(e.toString());
-        }
-    }
-    
+   
     @PostMapping(path="/register")
     @ResponseBody
     public String registerUser(HttpServletRequest request,HttpServletResponse response){
@@ -235,7 +221,6 @@ public class UserController {
                 str+=(char)bufReader.read();
             }
             JsonObject jsonObject=JsonParser.parseString(str).getAsJsonObject();
-            System.out.println(jsonObject);
             username=jsonObject.get("username").getAsString();
             password=jsonObject.get("password").getAsString();
             email=jsonObject.get("email").getAsString();
@@ -289,55 +274,6 @@ public class UserController {
 
     }
     
-    
-  
-    @GetMapping("/friends")
-    public String sendFriendsPage(){
-        return "friendsPage";
-    }
-
-
-    // @RequestMapping(path="/getFriendRequests",produces="application/json",method=RequestMethod.GET)
-    // @ResponseBody
-    // public List<FriendRequest> getFriendRequests(HttpServletRequest req,HttpServletResponse res){
-    //     List<FriendRequest> friendRequests=new LinkedList<FriendRequest>();
-        
-    //     String token=req.getHeader("Token");
-    //     if(token == null){
-    //         res.setStatus(400);
-    //         return friendRequests;
-    //     }
-
-    //     int userid=tokenService.verifyToken(token);
-        
-    //     try{
-    //         if(userid == -1){
-    //             res.sendError(404, "User not found");
-    //             return friendRequests;
-    //         }
-    //         if(userid == 500){
-    //             res.setStatus(500);
-    //             return friendRequests;
-    //         }
-    //     }catch(IOException e){
-    //         log.info(e);
-    //     }
-
-
-    //     try{
-    //         friendRequests=userService.getFriendRequests(userid);
-    //     }catch(SQLException e){
-    //         log.info(e);
-    //         res.setStatus(500);
-    //         return friendRequests;
-    //     }
-
-    //     System.out.println("FriendRequests: "+friendRequests);
-
-    //     return friendRequests;
-        
-    // }
-
     @GetMapping(path="/getFriends")
     @ResponseBody
     public String getFriends(HttpServletRequest request,HttpServletResponse response){
