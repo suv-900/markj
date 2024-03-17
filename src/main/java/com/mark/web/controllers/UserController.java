@@ -1,22 +1,20 @@
 package com.mark.web.controllers;
 
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
 
 
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,41 +22,59 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.tomcat.util.codec.binary.Base64;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.mark.web.exceptions.UserNotFoundException;
 import com.mark.web.models.Friend;
 import com.mark.web.models.FriendRequest;
-import com.mark.web.models.User;
 import com.mark.web.services.serviceImplementation.TokenServiceImplementation;
 import com.mark.web.services.serviceImplementation.UserServiceImplementation;
+import com.mark.web.utils.LogFileWriter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 
-@CrossOrigin
+@Slf4j
+@CrossOrigin(origins="http://localhost:3000",exposedHeaders = "Token")
 @Controller
 @RequestMapping("/users")
 public class UserController {
-    private static final Logger log=LogManager.getLogger(); 
     private static UserServiceImplementation userService=new UserServiceImplementation();
-    private static TokenServiceImplementation tokenService=new TokenServiceImplementation();    
+    private static TokenServiceImplementation tokenService=new TokenServiceImplementation();   
+    private static LogFileWriter logwriter=LogFileWriter.getInstance();
+
     @PostMapping("/verifytoken")
+    @ResponseBody
     public String verifyToken(HttpServletRequest request,HttpServletResponse response){
 
         String token=request.getHeader("Token");
-
-        int userid=tokenService.verifyToken(token);
-        System.out.println(userid);
-        if(userid == -1){
-            response.setStatus(401);
-        }else{
-            response.setStatus(200);
+       
+        if(token == null){
+            response.setStatus(400);
+            return "No Token Found";
         }
-        return "errorPage";
+        
+        try{
+            tokenService.verifyToken(token);
+        }catch(JWTVerificationException e){
+           log.warn(e.getMessage());
+           response.setStatus(401);
+           return e.getMessage(); 
+        }catch(NumberFormatException e){
+            response.setStatus(500);
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            return "Server Error";
+        }
+        
+        response.setStatus(200);
+        return "OK";
+
     }
     
     @GetMapping("/uploadImage")
@@ -111,179 +127,170 @@ public class UserController {
         // return "uploadFile";
     }
     
-    // @GetMapping("/login2")
-    // public String sendLoginPage(Model model){
-    //     model.addAttribute(new User());
-    //     return "loginUser2";
-    // }
 
-
-    // @PostMapping("/login2")
-    // public String validateUserLogin(@ModelAttribute User user, HttpServletResponse response,Model model){
-    //     String username=user.getUsername();
-    //     String password=user.getPassword();
-    //     if(username.isEmpty() || password.isEmpty()){
-    //         model.addAttribute("error","missing fields");
-    //         response.setStatus(400);
-    //         return "loginUser2";
-    //     }        
-    //     try{
-    //         if(userService.loginUser(username,password)){
-    //             int userid=userService.getUserID(username);
-    //             if(userid==-1){
-    //                 model.addAttribute("error","server error.");
-    //                 response.setStatus(500);
-    //                 return "loginUser2";
-    //             }
-    //             String token=tokenService.createToken(userid);
-    //             response.setHeader("token",token);
-    //             response.setStatus(200);
-    //             return "homePage";
-    //         }else{
-    //             model.addAttribute("error","doesnt match.");
-    //             response.setStatus(401);
-    //             return "loginUser2";
-    //         }
+    @PostMapping(path="/login")
+    @ResponseBody
+    public String loginUser(HttpServletRequest request,HttpServletResponse response){
         
-    //     }catch(Exception e){
-    //         // e.printStackTrace();
-    //         log.info(e);
-    //         model.addAttribute("error","Server Error");
-    //         response.setStatus(500);
-    //         return "loginUser2";
-    //     }
-         
+        String username="";
+        String password="";
+        try{
+            BufferedReader bufReader=request.getReader();
 
-    //     // boolean loginSuccess=userServiceImpl.loginUser2(username,password);
-    // }
-
- 
-    @GetMapping("/login")
-    public String loginUser(){
-        return "loginUser";
-    }
-  
-
-    @PostMapping(path="/login",consumes={MediaType.APPLICATION_FORM_URLENCODED_VALUE})
-    public String loginUser(@RequestParam MultiValueMap<String,String> form,HttpServletResponse response){
-
-        String username=form.getFirst("username");
-        String password=form.getFirst("password");
-
+            String str="";
+            while(bufReader.ready()){
+                str+=(char)bufReader.read();
+            }
+            JsonObject jsonObject=JsonParser.parseString(str).getAsJsonObject();
+            username=jsonObject.get("username").getAsString();
+            password=jsonObject.get("password").getAsString();
+        }catch(IOException e){
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
+        }catch(UnsupportedOperationException e){
+            log.error(e.getMessage());
+            String msg="Element is neither JsonPrimitive nor JsonArray";
+            logwriter.write(msg+" "+e.getMessage());
+            response.setStatus(400);
+            return "Bad Request";
+        }catch(IllegalStateException e){
+            log.error(e.getMessage());
+            String msg="JsonElement is a array,but there is more than 1 element";
+            logwriter.write(msg+" "+e.getMessage());
+            response.setStatus(400);
+            return "Bad Request";
+        }catch(Exception e){
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
+        }
+        
         if( username.isEmpty() || password.isEmpty()){
             response.setStatus(400);
-            return "homePage";
+            return "Bad Request";
         }
 
         try{
+            List<String> list;
+            
+            try{
+                list=userService.loginUser(username);
+            }catch(UserNotFoundException e){
+                log.error(e.getMessage());
+                logwriter.write(e.getMessage());
+                response.setStatus(400);
+                return e.getMessage();
+            }catch(Exception e){
+                throw e;
+            }
 
-            List<String> list=userService.loginUser(username);
             String s=list.get(1);
             int userid=Integer.parseInt(s);
-            
-            if(userid == -1){
-                response.setStatus(400);
-                return "homePage";
-            }
-            
             String dbPassword=list.get(0);
+
             boolean isOK=userService.comparePassword(dbPassword,password);
             
             if(!isOK){
                 response.setStatus(401);
-                return "homePage";
+                return "Incorrect Password";
             }
 
             String token=tokenService.createToken(userid);
             response.setHeader("Token",token);
             response.setStatus(200);
-            return "homePage";
-
+            return "OK";
         }catch(Exception e){
-            log.info(e);
+            log.error(e.getMessage());
             response.setStatus(500);
-            return "homePage";
+            logwriter.write(e.toString());
+            return e.getMessage();
         }
 
     }
 
+    @GetMapping("/logerror")
+    public void logError(){
+        try{
+            throw new Exception("Hi");
 
-    @GetMapping("/register")
-    public String sendRegisterPage(){
-        return "registerUser";
+        }catch(Exception e){
+            logwriter.write(e.toString());
+        }
     }
     
-    @PostMapping(path="/register",consumes={MediaType.APPLICATION_FORM_URLENCODED_VALUE})
-    public String registerUser(@RequestParam MultiValueMap<String,String> form,HttpServletResponse response){
-        String username=form.getFirst("username");
-        String password=form.getFirst("password");
-        String email=form.getFirst("email");
-        
+    @PostMapping(path="/register")
+    @ResponseBody
+    public String registerUser(HttpServletRequest request,HttpServletResponse response){
+        String username="";
+        String password="";
+        String email="";
+        try{
+            BufferedReader bufReader=request.getReader();
+
+            String str="";
+            while(bufReader.ready()){
+                str+=(char)bufReader.read();
+            }
+            JsonObject jsonObject=JsonParser.parseString(str).getAsJsonObject();
+            System.out.println(jsonObject);
+            username=jsonObject.get("username").getAsString();
+            password=jsonObject.get("password").getAsString();
+            email=jsonObject.get("email").getAsString();
+        }catch(IOException e){
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
+        }catch(UnsupportedOperationException e){
+            log.error(e.getMessage());
+            String msg="Element is neither JsonPrimitive nor JsonArray";
+            logwriter.write(msg+" "+e.getMessage());
+            response.setStatus(400);
+            return "Bad Request";
+        }catch(IllegalStateException e){
+            log.error(e.getMessage());
+            String msg="JsonElement is a array,but there is more than 1 element";
+            logwriter.write(msg+" "+e.getMessage());
+            response.setStatus(400);
+            return "Bad Request";
+        }catch(Exception e){
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
+        }
+     
         if(username.isEmpty() || password.isEmpty() || email.isEmpty()){
             response.setStatus(400);
-            return "homePage";
+            return "Bad Request Missing fields";
         }
          
         try{
             if(userService.checkUsername(username)){
                 response.setStatus(400);
-                return "homePage";
+                return "User exists";
             }        
 
             int userid=userService.registerUser(username,password,email);
             String token=tokenService.createToken(userid);
             response.setHeader("Token",token);
             response.setStatus(200);
-            return "homePage";
+            return "OK";
 
         }catch(Exception e){
-            log.info(e);
+            log.info(e.getMessage());
             response.setStatus(500);
-            return "homePage";
+            logwriter.write(e.getMessage());
+            return "Server Error";
         }
 
     }
     
-
     
-    @GetMapping("/register2")
-    public String sendRegisterPage(Model model){
-        model.addAttribute(new User());
-        return "registerUser";
-    }
-   
-    
-    
-    @PostMapping("/register2")
-    public String registerUser(@ModelAttribute User user,HttpServletResponse response,Model model){
-        try{
-            if(user.checkNULL()){
-                response.setStatus(400);
-                model.addAttribute("error","missing fields");
-                return "registerUser";
-            }
-
-            if(userService.checkUsername(user.getUsername())){
-                response.setStatus(400);
-                model.addAttribute("error","username exists");   
-                return "registerUser";
-            }
-            
-            int user_id=userService.registerUser(user.getUsername(),user.getPassword(),user.getEmail());
-            String token=tokenService.createToken(user_id);
-            response.setHeader("token", token); 
-            response.setStatus(200);
-            return "homePage";
-
-        }catch(Exception e){
-            log.info(e);
-            response.setStatus(500);
-            model.addAttribute("error","Server Error");
-            // e.printStackTrace();
-            return "registerUser";
-        }
-    }
-   
+  
     @GetMapping("/friends")
     public String sendFriendsPage(){
         return "friendsPage";
@@ -331,41 +338,44 @@ public class UserController {
         
     // }
 
-    @RequestMapping(path="/getFriends",produces="application/json",method=RequestMethod.GET)
+    @GetMapping(path="/getFriends")
     @ResponseBody
-    public List<Friend> getFriends(HttpServletRequest req,HttpServletResponse res){
+    public String getFriends(HttpServletRequest request,HttpServletResponse response){
         
+        String token=request.getHeader("Token");
+        if(token == null){
+            response.setStatus(400);
+            return "Token Not Found";
+        } 
+    
         List<Friend> friendsList=new LinkedList<Friend>();
         
-        String token=req.getHeader("Token");
-        if(token == null){
-            res.setStatus(400);
-            return friendsList;
-        }
-
-        int userid=tokenService.verifyToken(token);
-        
         try{
-            if(userid == -1){
-                res.sendError(404, "User not found");
-                return friendsList;
-            }
-            if(userid == 500){
-                res.setStatus(500);
-                return friendsList;
-            }
-       
+            int userid=tokenService.verifyToken(token);
             friendsList=userService.getAllFriends(userid);
-        }catch(Exception e){
-            log.info(e);
+        }catch(JWTVerificationException e){
+           log.warn(e.getMessage());
+           response.setStatus(401);
+           return e.getMessage(); 
+        }catch(NumberFormatException e){
+            response.setStatus(500);
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            return "Server Error";
+        }
+        catch(Exception e){
+            log.info(e.getMessage());
             e.printStackTrace();
-            res.setStatus(500);
-            return friendsList;
+            response.setStatus(500);
+            return "Server Error";
         } 
-
-        return friendsList;
+        Gson gson=new Gson();
+        String friendsListString=gson.toJson(friendsList);
+        response.setStatus(200);
+        return friendsListString;
        
     }
+
     @RequestMapping(path="/getPendingFriendRequests",produces="application/json",method=RequestMethod.GET)
     @ResponseBody
     public List<FriendRequest> getFriendRequests(HttpServletRequest req,HttpServletResponse res){
@@ -390,7 +400,7 @@ public class UserController {
             list=userService.getFriendRequests(userid);
             res.setStatus(200);
         }catch(Exception e){
-            log.info(e);
+            log.info(e.getMessage());
             e.printStackTrace();
             res.setStatus(500);
         }
@@ -428,7 +438,7 @@ public class UserController {
             res.setStatus(200);
             return "OK";
         }catch(Exception e){
-            log.info(e);
+            log.info(e.getMessage());
             
             res.setStatus(500);
             return e.getMessage();
@@ -437,8 +447,47 @@ public class UserController {
     }
     
     @ResponseBody
-    @RequestMapping(path="/acceptFriendRequest",method=RequestMethod.POST)
+    @RequestMapping(path="/denyFriendRequest",method=RequestMethod.POST)
     public String acceptFriendRequest(HttpServletRequest req,HttpServletResponse res){
+        
+        String token=req.getHeader("Token");
+        String fs=req.getParameter("fromUserID"); 
+        if(token == null ||  fs == null ){
+            res.setStatus(400);
+            return "Invalid Request";
+        }
+        
+        
+        try{
+            //you go here once
+            int fromUserID=Integer.parseInt(fs);
+
+            int toUserID=tokenService.verifyToken(token);
+            if(toUserID== -1){
+                res.setStatus(400);
+                return "Bad token";
+            }
+            if(toUserID == 500){
+                res.setStatus(500);
+                return "Server Error";
+            }
+            
+            userService.denyFriendRequest(fromUserID, toUserID);
+            res.setStatus(200);
+            return "OK";
+        }catch(Exception e){
+            log.info(e.getMessage());
+            e.printStackTrace(); 
+            res.setStatus(500);
+            return e.getMessage();
+        }
+
+
+    }
+
+    @ResponseBody
+    @RequestMapping(path="/acceptFriendRequest",method=RequestMethod.POST)
+    public String denyFriendRequest(HttpServletRequest req,HttpServletResponse res){
         
         String token=req.getHeader("Token");
         String username=req.getParameter("username"); 
@@ -461,11 +510,11 @@ public class UserController {
                 return "Server Error";
             }
             
-            Friend friend=userService.acceptFriendRequest(username, userid);
+            userService.acceptFriendRequest(username, userid);
             res.setStatus(200);
             return "OK";
         }catch(Exception e){
-            log.info(e);
+            log.info(e.getMessage());
             e.printStackTrace(); 
             res.setStatus(500);
             return e.getMessage();
@@ -473,7 +522,7 @@ public class UserController {
 
 
     }
-
+    
     @ResponseBody
     @RequestMapping(path="/getOneFriend",method=RequestMethod.GET)
     public Friend getFriend(HttpServletRequest req,HttpServletResponse res){
@@ -507,7 +556,7 @@ public class UserController {
             res.setStatus(200);
             return friend;
         }catch(Exception e){
-            log.info(e);
+            log.info(e.getMessage());
             e.printStackTrace(); 
             res.setStatus(500);
             return friend;

@@ -15,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.mark.web.db.DatabaseConnections;
+import com.mark.web.exceptions.UserNotFoundException;
 import com.mark.web.models.Friend;
 import com.mark.web.models.FriendRequest;
 import com.mark.web.models.User;
@@ -23,7 +24,6 @@ import com.mark.web.services.UserService;
 public class UserServiceImplementation implements UserService {
     // static Connection connection= get connection from the pool
     // private static PrintWriter writer=new PrintWriter(); 
-    private static final PasswordCodec utils=new PasswordCodec();
     private static final Logger log=LogManager.getLogger(); 
     private static BasicDataSource datasource=DatabaseConnections.getDataSource();
     
@@ -69,32 +69,36 @@ public class UserServiceImplementation implements UserService {
             
             
     }
-       public List<String> loginUser(String username)throws Exception{
+       public List<String> loginUser(String username)throws Exception, UserNotFoundException{
         //raw password compare to encrypted password
 
             Connection con=null;
             PreparedStatement ps=null;
 
 
+            List<String> list=new LinkedList<String>();
             try{
                 String query1="select user_id,password from users where username=? ";
                 con=datasource.getConnection();
-            
+                 
+                
                 ps=con.prepareStatement(query1);
                 ps.setString(1,username);
           
                 ResultSet rs=ps.executeQuery();
-                rs.next();
-           
-                List<String> list=new LinkedList<String>();
+                
+                if(!rs.next()){
+                    throw new UserNotFoundException();
+                }
+
                 String dbPassword=(String)rs.getObject("password");
                 int userid=(int)rs.getObject("user_id");
                 list.add(dbPassword);
                 list.add(Integer.toString(userid));
+
                 return list;
 
             }catch(Exception e){
-                log.info(e);
                 throw e;
             }finally{
                 if(ps != null){
@@ -394,7 +398,7 @@ public class UserServiceImplementation implements UserService {
         } 
         return friendsList;
     }
-    public Friend acceptFriendRequest(String username,int ownerID)throws Exception{
+    public void acceptFriendRequest(String username,int ownerID)throws Exception{
         Connection con=null;
         PreparedStatement ps=null;
 
@@ -460,7 +464,6 @@ public class UserServiceImplementation implements UserService {
             friend.setOnline(online);
             friend.setUserID(fromUserID);
             
-            return friend;
         }catch(Exception e){
             throw e;
         }finally{
@@ -472,6 +475,31 @@ public class UserServiceImplementation implements UserService {
             }
         }
     }
+
+    public void denyFriendRequest(int fromUserID,int toUserID)throws Exception{
+        Connection con=null;
+        PreparedStatement ps=null;
+
+        try{
+            String query="delete from friendRequests where from_user_id=? and to_user_id=?";
+            con=datasource.getConnection();
+            ps=con.prepareStatement(query);
+            ps.setInt(1,fromUserID);
+            ps.setInt(2,toUserID);
+
+            ps.executeUpdate();
+        }catch(Exception e){
+            throw e;
+        }finally{
+            if(ps != null){
+                ps.close();
+            }
+            if(con != null){
+                con.close();
+            }
+        }
+    }
+
     public Friend getFriend(int userID)throws Exception{
         Connection con=null;
         PreparedStatement ps=null;
