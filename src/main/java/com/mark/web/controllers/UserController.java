@@ -1,6 +1,5 @@
 package com.mark.web.controllers;
 
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,25 +8,27 @@ import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 
-
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
-import org.apache.tomcat.util.codec.binary.Base64;
 
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import org.apache.tomcat.util.codec.binary.Base64;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
+
+
+import com.mark.web.exceptions.RequestExistsException;
 import com.mark.web.exceptions.UserNotFoundException;
 import com.mark.web.models.Friend;
 import com.mark.web.models.FriendRequest;
@@ -35,10 +36,10 @@ import com.mark.web.services.serviceImplementation.TokenServiceImplementation;
 import com.mark.web.services.serviceImplementation.UserServiceImplementation;
 import com.mark.web.utils.LogFileWriter;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
-
+/*
+ * login,register,verifyToken,getFriends,getFriendRequests,sendFriendRequest
+ * getOneFriend,acceptFriendRequest,denyFriendRequest
+ */
 @Slf4j
 @CrossOrigin(origins="http://localhost:3000",exposedHeaders = "Token")
 @Controller
@@ -354,25 +355,57 @@ public class UserController {
     }
 
     @ResponseBody
-    @PostMapping(path="/sendFriendRequest",consumes={MediaType.APPLICATION_FORM_URLENCODED_VALUE})
-    public String sendFriendRequest(@RequestParam MultiValueMap<String,String> form,HttpServletRequest request,HttpServletResponse response){
+    @PostMapping(path="/sendFriendRequest")
+    public String sendFriendRequest(HttpServletRequest request,HttpServletResponse response){
         
         String token=request.getHeader("Token");
-        String ToUsername=form.getFirst("ToUsername");
         //i need to come with better names 
-        
+        String toUsername;
+        try{
+            BufferedReader bufReader=request.getReader();
+
+            String str="";
+            while(bufReader.ready()){
+                str+=(char)bufReader.read();
+            }
+            JsonObject jsonObject=JsonParser.parseString(str).getAsJsonObject();
+            toUsername=jsonObject.get("ToUsername").getAsString();
+        }catch(IOException e){
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
+        }catch(UnsupportedOperationException e){
+            log.error(e.getMessage());
+            String msg="Element is neither JsonPrimitive nor JsonArray";
+            logwriter.write(msg+" "+e.getMessage());
+            response.setStatus(400);
+            return "Bad Request";
+        }catch(IllegalStateException e){
+            log.error(e.getMessage());
+            String msg="JsonElement is a array,but there is more than 1 element";
+            logwriter.write(msg+" "+e.getMessage());
+            response.setStatus(400);
+            return "Bad Request";
+        }catch(Exception e){
+            log.error(e.getMessage());
+            logwriter.write(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
+        }
         if(token == null){
             response.setStatus(401);
             return "Token not found.";
         }
-        if(ToUsername.length() == 0){
+        if(toUsername.length() == 0){
             response.setStatus(400);
             return "ToUsername not found";
-        } 
+        }
+
+        
         try{
-            
             int userid=tokenService.verifyToken(token);
-            userService.sendFriendRequest(ToUsername,userid);
+            userService.sendFriendRequest(toUsername,userid);
 
             response.setStatus(200);
             return "OK";
@@ -386,6 +419,9 @@ public class UserController {
             log.error(e.getMessage());
             logwriter.write(e.getMessage());
             return "Server Error";
+        }catch(RequestExistsException r){
+            response.setStatus(409);
+            return r.getMessage();
         }
         catch(Exception e){
             log.info(e.getMessage());
