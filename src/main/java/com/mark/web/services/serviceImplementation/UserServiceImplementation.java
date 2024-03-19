@@ -15,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.mark.web.db.DatabaseConnections;
+import com.mark.web.exceptions.RequestExistsException;
 import com.mark.web.exceptions.UserNotFoundException;
 import com.mark.web.models.Friend;
 import com.mark.web.models.FriendRequest;
@@ -218,7 +219,7 @@ public class UserServiceImplementation implements UserService {
     }
 
     //write better exception handling
-    public void sendFriendRequest(String username,int fromUserID) throws Exception{
+    public void sendFriendRequest(String username,int fromUserID) throws Exception,RequestExistsException{
         
         Connection con=null;
         PreparedStatement ps=null;
@@ -226,7 +227,7 @@ public class UserServiceImplementation implements UserService {
         try{
             int toUserID=getUserID(username);
             if(toUserID == -1){
-                throw new Exception("to_user_id not found");
+                throw new Exception("toUserID not found");
             }
             String query1="select * from friendRequests where to_user_id=? and from_user_id=?";
             con=datasource.getConnection();
@@ -238,7 +239,7 @@ public class UserServiceImplementation implements UserService {
 
             if(rs.next()){
                 //request exists
-                throw new Exception("Request already exists.");
+                throw new RequestExistsException();
             }
             ps.close();
 

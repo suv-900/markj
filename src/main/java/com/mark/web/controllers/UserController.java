@@ -36,10 +36,13 @@ import com.mark.web.services.serviceImplementation.TokenServiceImplementation;
 import com.mark.web.services.serviceImplementation.UserServiceImplementation;
 import com.mark.web.utils.LogFileWriter;
 
-/*
- * login,register,verifyToken,getFriends,getFriendRequests,sendFriendRequest
- * getOneFriend,acceptFriendRequest,denyFriendRequest
+/**
+ * all the handlers for user authentications.
  */
+
+ //login,register,verifyToken,getFriends,getFriendRequests,sendFriendRequest
+// getOneFriend,acceptFriendRequest,denyFriendRequest
+
 @Slf4j
 @CrossOrigin(origins="http://localhost:3000",exposedHeaders = "Token")
 @Controller

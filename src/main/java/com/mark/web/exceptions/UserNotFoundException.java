@@ -5,8 +5,8 @@ public class UserNotFoundException extends Throwable {
         super("User Not found.");
     }
 
-    // public UserNotFoundException(String message){
-    //     super(message);
-    // }
+    public UserNotFoundException(String message){
+        super(message);
+    }
 }
 
