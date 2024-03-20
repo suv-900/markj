@@ -14,11 +14,11 @@ public class HomePageController {
     return "homePage";
    }
    
-   @GetMapping("/error")
-   public String error(){
-      log.info("HI");
-      return "errorPage";
-   }
+   // @GetMapping("/error")
+   // public String error(){
+   //    log.error("Error occured");
+   //    return "errorPage";
+   // }
    
    @GetMapping("/button-click")
    public void gotRequest(){

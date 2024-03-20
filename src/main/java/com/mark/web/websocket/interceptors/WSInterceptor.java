@@ -1,8 +1,7 @@
-package com.mark.web.websocket;
+package com.mark.web.websocket.interceptors;
 
 import java.util.Map;
 
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.socket.WebSocketHandler;
@@ -15,12 +14,8 @@ public class WSInterceptor implements HandshakeInterceptor{
     
     @Override
     public boolean beforeHandshake(ServerHttpRequest request,ServerHttpResponse response,WebSocketHandler handler,Map<String,Object> attributes){
-        log.info("beforeHandshake()");
-        HttpHeaders headers=request.getHeaders();
-        
-        System.out.println("Host "+headers.getHost());
-
-        return true;
+        log.info("beforeHandshake");
+        return false;
     }
 
     @Override

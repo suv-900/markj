@@ -8,24 +8,28 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
+import com.mark.web.websocket.handlers.ChatWSHandler;
+import com.mark.web.websocket.interceptors.WSInterceptor;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @EnableWebSocket
 @Configuration
+//TODO:use SockJS 
 public class WebSocketConfig implements WebSocketConfigurer{
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(new ChatWSHandler(), "/chat")
-                .addInterceptors(new WSInterceptor());
-
+                .addInterceptors(new WSInterceptor())
+                .setAllowedOrigins("http://localhost:3000");
     }
 
     @Bean
     public ServletServerContainerFactoryBean createContainer(){
-        log.info("Creating new container.");
         ServletServerContainerFactoryBean container=new ServletServerContainerFactoryBean();
+        log.info("Creating new WebSocket container. "+container);
         return container;
     }
     @Bean

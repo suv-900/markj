@@ -1,4 +1,4 @@
-package com.mark.web.websocket;
+package com.mark.web.websocket.handlers;
 
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -16,9 +16,10 @@ public class ChatWSHandler extends TextWebSocketHandler{
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session)throws Exception{
+        log.info("Connection established");
         log.info("SessionID: "+session.getId());
         log.info("LocalAddress: "+session.getLocalAddress().getPort());
-        log.info("RemoteAddress: "+session.getRemoteAddress().getHostName());
+        log.info("RemoteAddress: "+session.getRemoteAddress().getPort());
     }
 
     @Override 
