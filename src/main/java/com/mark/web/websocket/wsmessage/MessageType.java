@@ -8,5 +8,6 @@ public enum MessageType {
     FORBIDDEN, 
     ADD_CONTACT, 
     GET_CONTACTS, 
-    UNSUBSCRIBE 
+    REMOVE_CONTACT,
+    SUCCESS 
 }

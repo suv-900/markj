@@ -1,4 +1,4 @@
-package com.mark.web.XMPP;
+package com.mark.web.xmpp;
 
 import org.jivesoftware.smack.AbstractXMPPConnection;
 import org.jivesoftware.smack.ConnectionConfiguration.SecurityMode;

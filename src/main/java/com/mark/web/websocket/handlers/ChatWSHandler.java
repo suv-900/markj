@@ -5,13 +5,19 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import com.mark.web.xmpp.XMPPManager;
+
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@AllArgsConstructor
 public class ChatWSHandler extends TextWebSocketHandler{
-   
+    private XMPPManager manager;
+    
     @Override
     public void handleTextMessage(WebSocketSession session,TextMessage message){
+
     }
 
     @Override

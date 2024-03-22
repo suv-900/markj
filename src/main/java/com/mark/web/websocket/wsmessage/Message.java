@@ -8,7 +8,7 @@ import lombok.Value;
 @Value
 @Builder
 @AllArgsConstructor(access=AccessLevel.PACKAGE)
-public class Message {
+public class Message implements TextMessage{
     String from;
     String to;
     String messageContent;
