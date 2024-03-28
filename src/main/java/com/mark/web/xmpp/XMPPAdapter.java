@@ -19,17 +19,19 @@ import org.jxmpp.jid.BareJid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Localpart;
 import org.jxmpp.stringprep.XmppStringprepException;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+// import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@EnableConfigurationProperties(XMPPConfig.class)
-@RequiredArgsConstructor
+// @EnableConfigurationProperties(XMPPConfig.class)
 public class XMPPAdapter {
-   private final XMPPConfig baseConfig;
-
+   // private XMPPConfig baseConfig;
+   private int port=5222;
+   private String host="openfire";
+   private String domain="core.localdomain";
+   public XMPPAdapter(){}
+   
    public XMPPTCPConnection connect(String username,String password,boolean presence)
          throws IOException,XMPPException,SmackException,InterruptedException
    {
@@ -39,16 +41,18 @@ public class XMPPAdapter {
          try{
             XMPPTCPConnectionConfiguration config=XMPPTCPConnectionConfiguration.builder()
                .setUsernameAndPassword(username, password)
-               .setHost(baseConfig.getHost())
-               .setPort(baseConfig.getPort())
-               .setXmppDomain(baseConfig.getDomain())
+               .setHost("localhost")
+               .setPort(5222)
+               .setXmppDomain("core.localdomain")
+               // .setHost(baseConfig.getHost())
+               // .setPort(baseConfig.getPort())
+               // .setXmppDomain(baseConfig.getDomain())
                .setSecurityMode(ConnectionConfiguration.SecurityMode.disabled)
                .setSendPresence(presence)
                .build();
             connection=new XMPPTCPConnection(config);
             connection.connect();
          }catch(IOException | InterruptedException | XMPPException | SmackException e){
-            log.info("Error occured while connection to server "+e.getMessage());
             throw e;
          }
          return connection; 
@@ -65,14 +69,14 @@ public class XMPPAdapter {
       log.info("Login Successful.");
    }
    
-   public void createAccount(XMPPTCPConnection connection,String username,String password)throws Exception{
+   public void createAccount(XMPPTCPConnection connection,String username,String password)throws XMPPException.XMPPErrorException,
+   SmackException.NoResponseException,InterruptedException,XmppStringprepException,SmackException.NotConnectedException{
       AccountManager accountManager=AccountManager.getInstance(connection);
       
-      log.info("AccountManager instacne found for the connection "+accountManager);
       accountManager.sensitiveOperationOverInsecureConnection(true);
       try{
          accountManager.createAccount(Localpart.from(username),password);
-         System.out.println("Account created using account manager: "+accountManager+" connection: "+connection);
+         log.info("Account created using account manager,connection: "+connection);
       }catch(XMPPException.XMPPErrorException | SmackException.NoResponseException 
          | InterruptedException  | XmppStringprepException | SmackException.NotConnectedException e){
          throw e;
@@ -84,7 +88,8 @@ public class XMPPAdapter {
    {
      ChatManager chatManager=ChatManager.getInstanceFor(connection);
       try{
-         Chat chat=chatManager.chatWith(JidCreate.entityBareFrom(to+"@"+baseConfig.getDomain()));
+         // Chat chat=chatManager.chatWith(JidCreate.entityBareFrom(to+"@"+baseConfig.getDomain()));
+         Chat chat=chatManager.chatWith(JidCreate.entityBareFrom(to+"@"+domain));
          chat.send(message);
       }catch(XmppStringprepException | SmackException.NotConnectedException | InterruptedException e){
          throw e;
@@ -119,7 +124,8 @@ public class XMPPAdapter {
       }
 
       try{
-         BareJid jid=JidCreate.bareFrom(to+"@"+baseConfig.getDomain());
+         // BareJid jid=JidCreate.bareFrom(to+"@"+baseConfig.getDomain());
+         BareJid jid=JidCreate.bareFrom(to+"@"+domain);
          roster.createItemAndRequestSubscription(jid,to,null);
       }catch(XmppStringprepException | XMPPException.XMPPErrorException | SmackException.NotConnectedException 
          | SmackException.NoResponseException | SmackException.NotLoggedInException | InterruptedException e){
@@ -142,7 +148,8 @@ public class XMPPAdapter {
       }
 
       try{
-         BareJid jid=JidCreate.bareFrom(user+"@"+baseConfig.getDomain());
+         // BareJid jid=JidCreate.bareFrom(user+"@"+baseConfig.getDomain());
+         BareJid jid=JidCreate.bareFrom(user+"@"+domain);
          roster.removeEntry(roster.getEntry(jid));
       }catch(XmppStringprepException | XMPPException.XMPPErrorException | SmackException.NotConnectedException 
          | SmackException.NoResponseException | SmackException.NotLoggedInException | InterruptedException e){

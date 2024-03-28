@@ -15,7 +15,7 @@ public class WSInterceptor implements HandshakeInterceptor{
     @Override
     public boolean beforeHandshake(ServerHttpRequest request,ServerHttpResponse response,WebSocketHandler handler,Map<String,Object> attributes){
         log.info("beforeHandshake");
-        return false;
+        return true;
     }
 
     @Override

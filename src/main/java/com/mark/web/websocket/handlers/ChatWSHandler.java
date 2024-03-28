@@ -5,27 +5,32 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import com.google.gson.Gson;
+import com.mark.web.websocket.wsmessage.Message;
 import com.mark.web.xmpp.XMPPManager;
 
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@AllArgsConstructor
 public class ChatWSHandler extends TextWebSocketHandler{
-    private XMPPManager manager;
+    private XMPPManager manager=new XMPPManager();
+
+    public ChatWSHandler(){
+        // this.manager=(XMPPManager) SpringContext.getApplicationContext().getBean("XMPPManager");
+    }
     
     @Override
     public void handleTextMessage(WebSocketSession session,TextMessage message){
-
+        String str=message.getPayload();
+        Gson gson=new Gson();
+        Message msg=gson.fromJson(str,Message.class);
+        log.info("Message: "+msg);
+        manager.handleMessage(msg,session);
     }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session)throws Exception{
         log.info("Connection established");
-        log.info("SessionID: "+session.getId());
-        log.info("LocalAddress: "+session.getLocalAddress().getPort());
-        log.info("RemoteAddress: "+session.getRemoteAddress().getPort());
     }
 
     @Override 

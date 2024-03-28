@@ -18,7 +18,6 @@ import com.mark.web.exceptions.ServiceRuntimeException;
 import com.mark.web.websocket.wsmessage.Message;
 import com.mark.web.websocket.wsmessage.MessageType;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -26,77 +25,221 @@ import lombok.extern.slf4j.Slf4j;
  */
 
 @Slf4j
-@RequiredArgsConstructor
 public class XMPPManager {
     private Map<WebSocketSession,XMPPTCPConnection> connections=new HashMap<>();
-    private XMPPAdapter adapter;
-    private SocketMessageSender messageSender;
+    private final XMPPAdapter adapter=new XMPPAdapter();
+    private final SocketMessageSender messageSender=new SocketMessageSender();
+    
+    public XMPPManager(){}
 
+    public void handleMessage(Message message,WebSocketSession session){
+        if(message.getMessageType() == null ){
+           sendMessageToSocket(session, Message.builder()
+            .messageType(MessageType.ERROR)
+            .messageContent("MessageType is null")
+            .build());
+            
+            return; 
+        } 
+        MessageType type=message.getMessageType();
+        //type.ordinal()-> int position in enum
+        switch(type){
+            case REGISTER -> {
+                String username=message.getFrom();
+                String password=message.getMessageContent();
+                //TODO
+                boolean presence=true;
+
+                if(username == null || password == null){
+                    //bad message
+                    sendMessageToSocket(session, Message.builder().messageType(MessageType.ERROR)
+                    .messageContent("username/password is null").build());
+                    return;
+                }
+                //rehashing
+                register(session,username,password,presence);
+            }
+            case CONNECT -> {
+                String username=message.getFrom();
+                String password=message.getMessageContent();
+                //TODO
+                boolean presence=true;
+
+                if(username == null || password == null){
+                    //bad message
+                    sendMessageToSocket(session, Message.builder().messageType(MessageType.ERROR)
+                    .messageContent("username/password is null").build());
+                    return;
+                }
+                //rehashing
+                connect(session,username,password,presence);
+
+            }
+            case DISCONNECT -> {
+                disconnect(session);
+            }
+            case NEW_MESSAGE -> {
+                sendMessage(session,message);
+            }
+            default -> {
+                log.error(type+" type is not implemented.");
+                sendMessageToSocket(session, Message.builder()
+                    .messageType(MessageType.ERROR)
+                    .messageContent(type+" type is not implemented.")
+                    .build());
+            }
+        }
+    }
+    private void closeSession(WebSocketSession session){
+        try{
+            if(session.isOpen()){
+                session.close();
+            }
+        }catch(IOException e){
+            log.error("Couldnt close session. "+e.getMessage());
+        }
+    }
+    public void register(WebSocketSession session,String username,String password,boolean presence){
+        XMPPTCPConnection connection=null;
+       
+        try{
+            connection=adapter.connect(username,password,presence);
+            log.info("XMPP connection created");
+        }catch(IOException | InterruptedException e){
+            sendMessageToSocket(session,Message.builder()
+                .messageType(MessageType.ERROR)
+                .messageContent("Couldnt create XMPPConnection."+e.getMessage())
+                .build());
+            log.error("IO/Interrupted Exception: "+e.getMessage());
+            closeSession(session); 
+            return;
+        }catch(ServiceRuntimeException e){
+            sendMessageToSocket(session,Message.builder()
+                .messageType(MessageType.ERROR)
+                .messageContent("Couldnt create XMPPConnection."+e.getMessage())
+                .build());
+            log.error("RuntimeException: "+e.getMessage());
+            closeSession(session); 
+            return;
+        }catch(XMPPException | SmackException e){
+            sendMessageToSocket(session,Message.builder()
+                .messageType(MessageType.ERROR)
+                .messageContent("Couldnt create XMPPConnection."+e.getMessage())
+                .build());
+            log.error("XMPP/SmackException: "+e.getMessage());
+            closeSession(session); 
+            return;
+        }
+        
+        try{
+            adapter.createAccount(connection, username, password);
+            sendMessageToSocket(session,Message.builder()
+                .messageType(MessageType.SUCCESS)
+                .build());
+            closeSession(session);
+        }catch(IOException | InterruptedException e){
+            connection.disconnect();
+            sendMessageToSocket(session,Message.builder()
+                .messageType(MessageType.ERROR)
+                .messageContent("Couldnt create user.")
+                .build());
+            closeSession(session); 
+            log.error("IO/Interrupted Exception: "+e.getMessage());
+            return;
+        }catch(ServiceRuntimeException r){
+            connection.disconnect();
+            sendMessageToSocket(session,Message.builder()
+                .messageType(MessageType.ERROR)
+                .messageContent("Couldnt create user.")
+                .build());
+            closeSession(session); 
+            log.error("RuntimeException: "+r.getMessage());
+            return;
+        }catch(XMPPException | SmackException e){
+            connection.disconnect();
+            sendMessageToSocket(session,Message.builder()
+                .messageType(MessageType.ERROR)
+                .messageContent("Couldnt create user.")
+                .build());
+            closeSession(session); 
+            log.error("XMPP/SmackException: "+e.getMessage());
+            return;
+        }
+
+    }
     public void connect(WebSocketSession session,String username,String password,boolean presence){
         XMPPTCPConnection connection=null;
        
         try{
             connection=adapter.connect(username,password,presence);
+            log.info("XMPP connection created");
         }catch(IOException | InterruptedException e){
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.ERROR)
-                .messageContent("Couldnt create XMPPConnection.")
+                .messageContent("Couldnt create XMPPConnection."+e.getMessage())
                 .build());
             log.error("IO/Interrupted Exception: "+e.getMessage());
-        }catch(ServiceRuntimeException r){
+            closeSession(session); 
+            return;
+        }catch(ServiceRuntimeException e){
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.ERROR)
-                .messageContent("Couldnt create XMPPConnection.")
+                .messageContent("Couldnt create XMPPConnection."+e.getMessage())
                 .build());
-            log.error("RuntimeException: "+r.getMessage());
+            log.error("RuntimeException: "+e.getMessage());
+            closeSession(session); 
+            return;
         }catch(XMPPException | SmackException e){
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.ERROR)
-                .messageContent("Couldnt create XMPPConnection.")
+                .messageContent("Couldnt create XMPPConnection."+e.getMessage())
                 .build());
             log.error("XMPP/SmackException: "+e.getMessage());
+            closeSession(session); 
+            return;
         }
 
-        try{
-           if(connection == null && session.isOpen()){
-            session.close(CloseStatus.SERVER_ERROR);
-           } 
-        }catch(IOException e){
-            //TODO:unable to close session
-            log.warn("Error closing websocket IOException: "+e.getMessage());
-        }
+        
 
-
-        log.info("started xmppsession successfully.");
-        log.info("Stored connection & session");
-        connections.put(session,connection);
-       
-        try{
-            
+        try{   
             adapter.login(connection);
-            log.info("logged in successfully.");
+            log.info("Logged in successfully.");
             
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.SUCCESS)
                 .build());
+
+            log.info("started xmppsession successfully.");
+            log.info("Stored connection & session");
+            connections.put(session,connection);
+ 
         }catch(IOException | InterruptedException e){
+            connection.disconnect();
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.ERROR)
-                .messageContent("Couldnt create XMPPConnection.")
+                .messageContent("Couldnt login user.")
                 .build());
+            closeSession(session); 
             log.error("IO/Interrupted Exception: "+e.getMessage());
+            return;
         }catch(ServiceRuntimeException r){
+            connection.disconnect();
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.ERROR)
-                .messageContent("Couldnt create XMPPConnection.")
+                .messageContent("Couldnt login user.")
                 .build());
+            closeSession(session); 
             log.error("RuntimeException: "+r.getMessage());
+            return;
         }catch(XMPPException | SmackException e){
+            connection.disconnect();
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.ERROR)
-                .messageContent("Couldnt create XMPPConnection.")
+                .messageContent("Couldnt login user.")
                 .build());
+            closeSession(session); 
             log.error("XMPP/SmackException: "+e.getMessage());
+            return;
         }
 
     }
@@ -362,7 +505,7 @@ public class XMPPManager {
             .build());
     }
     
-    private void sendMessageToSocket(WebSocketSession session,Message message){
+    public void sendMessageToSocket(WebSocketSession session,Message message){
 
         if(session == null){
             log.info("Session is null cannot send message");

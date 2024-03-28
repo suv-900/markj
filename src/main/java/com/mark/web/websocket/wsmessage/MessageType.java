@@ -1,6 +1,8 @@
 package com.mark.web.websocket.wsmessage;
 
 public enum MessageType {
+    CONNECT,
+    DISCONNECT,
     NEW_MESSAGE, 
     JOIN_SUCCESS, 
     LEAVE, 
@@ -9,5 +11,7 @@ public enum MessageType {
     ADD_CONTACT, 
     GET_CONTACTS, 
     REMOVE_CONTACT,
-    SUCCESS 
+    SUCCESS,
+    LOGIN,
+    REGISTER 
 }
