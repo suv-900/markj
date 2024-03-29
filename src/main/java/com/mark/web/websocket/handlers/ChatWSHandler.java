@@ -13,10 +13,10 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class ChatWSHandler extends TextWebSocketHandler{
-    private XMPPManager manager=new XMPPManager();
+    private XMPPManager manager=XMPPManager.getInstance();
 
     public ChatWSHandler(){
-        // this.manager=(XMPPManager) SpringContext.getApplicationContext().getBean("XMPPManager");
+        log.info("ChatWSHandler created.");
     }
     
     @Override

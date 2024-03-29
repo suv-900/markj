@@ -3,6 +3,7 @@ package com.mark.web.websocket.wsmessage;
 public enum MessageType {
     CONNECT,
     DISCONNECT,
+    MESSAGE,
     NEW_MESSAGE, 
     JOIN_SUCCESS, 
     LEAVE, 

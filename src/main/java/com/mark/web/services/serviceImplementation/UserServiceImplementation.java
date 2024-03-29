@@ -585,19 +585,19 @@ public class UserServiceImplementation implements UserService {
     
     // }
     
-    public void storeMessages(int user1ID,int user2ID,String message)throws Exception{
+    public void storeMessages(int fromUserID,int toUserID,String message)throws Exception{
         
        Connection con=null;
        PreparedStatement ps=null;
 
        try{
-            String query="insert into messages(user1ID,user2ID,message) values(?,?,?)";
+            String query="insert into messages(fromUserID,toUserID,messageContent) values(?,?,?)";
             
             con=datasource.getConnection();
             ps=con.prepareStatement(query);
 
-            ps.setInt(0,user1ID);
-            ps.setInt(1,user2ID);
+            ps.setInt(0,fromUserID);
+            ps.setInt(1,toUserID);
             ps.setString(2,message);
 
             ps.executeQuery();

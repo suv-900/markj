@@ -51,7 +51,6 @@ import com.mark.web.utils.LogFileWriter;
 public class UserController {
     private static UserServiceImplementation userService=new UserServiceImplementation();
     private static TokenServiceImplementation tokenService=new TokenServiceImplementation();   
-    private static LogFileWriter logwriter=LogFileWriter.getInstance();
 
     @PostMapping("/verifytoken")
     @ResponseBody
@@ -73,7 +72,6 @@ public class UserController {
         }catch(NumberFormatException e){
             response.setStatus(500);
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             return "Server Error";
         }
         
@@ -146,24 +144,18 @@ public class UserController {
             password=jsonObject.get("password").getAsString();
         }catch(IOException e){
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }catch(UnsupportedOperationException e){
             log.error(e.getMessage());
-            String msg="Element is neither JsonPrimitive nor JsonArray";
-            logwriter.write(msg+" "+e.getMessage());
             response.setStatus(400);
             return "Bad Request";
         }catch(IllegalStateException e){
             log.error(e.getMessage());
-            String msg="JsonElement is a array,but there is more than 1 element";
-            logwriter.write(msg+" "+e.getMessage());
             response.setStatus(400);
             return "Bad Request";
         }catch(Exception e){
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }
@@ -180,7 +172,6 @@ public class UserController {
                 list=userService.loginUser(username);
             }catch(UserNotFoundException e){
                 log.error(e.getMessage());
-                logwriter.write(e.getMessage());
                 response.setStatus(400);
                 return e.getMessage();
             }catch(Exception e){
@@ -205,7 +196,6 @@ public class UserController {
         }catch(Exception e){
             log.error(e.getMessage());
             response.setStatus(500);
-            logwriter.write(e.toString());
             return e.getMessage();
         }
 
@@ -231,24 +221,18 @@ public class UserController {
             email=jsonObject.get("email").getAsString();
         }catch(IOException e){
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }catch(UnsupportedOperationException e){
             log.error(e.getMessage());
-            String msg="Element is neither JsonPrimitive nor JsonArray";
-            logwriter.write(msg+" "+e.getMessage());
             response.setStatus(400);
             return "Bad Request";
         }catch(IllegalStateException e){
             log.error(e.getMessage());
-            String msg="JsonElement is a array,but there is more than 1 element";
-            logwriter.write(msg+" "+e.getMessage());
             response.setStatus(400);
             return "Bad Request";
         }catch(Exception e){
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }
@@ -272,7 +256,6 @@ public class UserController {
         }catch(Exception e){
             log.info(e.getMessage());
             response.setStatus(500);
-            logwriter.write(e.getMessage());
             return "Server Error";
         }
 
@@ -309,12 +292,10 @@ public class UserController {
         }catch(NumberFormatException e){
             response.setStatus(500);
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             return "Server Error";
         }
         catch(Exception e){
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         } 
@@ -348,13 +329,11 @@ public class UserController {
         }
         catch(NumberFormatException e){
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }
         catch(Exception e){
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }
@@ -379,24 +358,18 @@ public class UserController {
             toUsername=jsonObject.get("ToUsername").getAsString();
         }catch(IOException e){
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }catch(UnsupportedOperationException e){
             log.error(e.getMessage());
-            String msg="Element is neither JsonPrimitive nor JsonArray";
-            logwriter.write(msg+" "+e.getMessage());
             response.setStatus(400);
             return "Bad Request";
         }catch(IllegalStateException e){
             log.error(e.getMessage());
-            String msg="JsonElement is a array,but there is more than 1 element";
-            logwriter.write(msg+" "+e.getMessage());
             response.setStatus(400);
             return "Bad Request";
         }catch(Exception e){
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }
@@ -424,7 +397,6 @@ public class UserController {
         catch(NumberFormatException e){
             response.setStatus(500);
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             return "Server Error";
         }catch(RequestExistsException r){
             response.setStatus(409);
@@ -432,7 +404,6 @@ public class UserController {
         }
         catch(Exception e){
             log.info(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }
@@ -471,12 +442,10 @@ public class UserController {
         catch(NumberFormatException e){
             response.setStatus(500);
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             return "Server Error";
         }
         catch(Exception e){
             log.info(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }
@@ -513,12 +482,10 @@ public class UserController {
         catch(NumberFormatException e){
             response.setStatus(500);
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             return "Server Error";
         }
         catch(Exception e){
             log.info(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }
@@ -562,12 +529,10 @@ public class UserController {
         catch(NumberFormatException e){
             response.setStatus(500);
             log.error(e.getMessage());
-            logwriter.write(e.getMessage());
             return "Server Error";
         }
         catch(Exception e){
             log.info(e.getMessage());
-            logwriter.write(e.getMessage());
             response.setStatus(500);
             return "Server Error";
         }

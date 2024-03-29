@@ -53,12 +53,29 @@ import lombok.extern.slf4j.Slf4j;
  */
 
 @Slf4j
-public class XMPPManager {
+public final class XMPPManager {
+    private volatile static XMPPManager instance =null;
+    
+    private XMPPManager(){
+        log.info("XMPPManager created.");
+    }
+    
+    public static XMPPManager getInstance(){
+        if(instance == null){
+            synchronized(XMPPManager.class){
+                if(instance == null){
+                    instance=new XMPPManager(); 
+                }
+            }
+        
+        }
+        return instance;
+    }
+
     private Map<WebSocketSession,XMPPTCPConnection> connections=new HashMap<>();
     private XMPPAdapter adapter=new XMPPAdapter();
     private SocketMessageSender messageSender=new SocketMessageSender();
     private UserServiceImplementation  userService=new UserServiceImplementation(); 
-    public XMPPManager(){}
 
     public void handleMessage(Message message,WebSocketSession session){
         if(message.getMessageType() == null ){
@@ -104,7 +121,7 @@ public class XMPPManager {
             case DISCONNECT -> {
                 disconnect(session);
             }
-            case NEW_MESSAGE -> {
+            case MESSAGE-> {
                 sendMessage(session,message);
             }
             default -> {
@@ -151,14 +168,10 @@ public class XMPPManager {
         
         try{
             adapter.createAccount(connection, username, password);
-            
-            log.info("username from connection:"+connection.getUser().getLocalpart().toString());
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.SUCCESS)
                 .build());
             closeSession(session);
-            connection.disconnect();
-            log.info("connection disconnnected.");
         }catch(IOException | InterruptedException e){
             connection.disconnect();
             sendMessageToSocket(session,Message.builder()
@@ -207,15 +220,6 @@ public class XMPPManager {
                 .build());
             closeSession(session); 
             log.error("SmackException: "+e.getMessage());
-            return;
-        }catch(XMPPException e){
-            connection.disconnect();
-            sendMessageToSocket(session,Message.builder()
-                .messageType(MessageType.ERROR)
-                .messageContent("Couldnt create user.")
-                .build());
-            closeSession(session); 
-            log.error("XMPPException: "+e.getMessage());
             return;
         }
 
@@ -280,7 +284,7 @@ public class XMPPManager {
         try{   
             adapter.login(connection);
             log.info("Logged in successfully.");
-            
+
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.SUCCESS)
                 .build());
@@ -288,7 +292,8 @@ public class XMPPManager {
             log.info("started xmppsession successfully.");
             log.info("Stored connection & session");
             connections.put(session,connection);
- 
+            log.info("Number of connections entries: "+connections.size());
+
         }catch(IOException | InterruptedException e){
             connection.disconnect();
             sendMessageToSocket(session,Message.builder()
@@ -348,6 +353,12 @@ public class XMPPManager {
         switch(message.getMessageType()){
             case NEW_MESSAGE -> {
                 try{
+
+                    int fromUserID=userService.getUserID(message.getFrom());
+                    int toUserID=userService.getUserID(message.getTo());
+                    
+                    userService.storeMessages(fromUserID,toUserID,message.getMessageContent());
+
                     adapter.sendMessage(connection,message.getMessageContent(),message.getTo());
                     log.info("Message sent");
                     
@@ -379,6 +390,12 @@ public class XMPPManager {
                     .messageContent("Couldnt send message.")
                     .build());
                     log.error("StringpreprException: "+e.getMessage());
+                }catch(Exception e){
+                    sendMessageToSocket(session,Message.builder()
+                    .messageType(MessageType.ERROR)
+                    .messageContent("Couldnt send message.")
+                    .build());
+                    log.error("Exception: "+e.getMessage());
                 } 
             }
             case ADD_CONTACT -> {
