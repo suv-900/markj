@@ -14,11 +14,39 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 
 import com.google.gson.Gson;
+
 import com.mark.web.exceptions.ServiceRuntimeException;
+import com.mark.web.services.serviceImplementation.UserServiceImplementation;
 import com.mark.web.websocket.wsmessage.Message;
 import com.mark.web.websocket.wsmessage.MessageType;
 
 import lombok.extern.slf4j.Slf4j;
+
+// XMPP Errors
+// XMPP Error Condition	Type	RFC 6120 Section
+// bad-request	MODIFY	8.3.3.1
+// conflict	CANCEL	8.3.3.2
+// feature-not-implemented	CANCEL	8.3.3.3
+// forbidden	AUTH	8.3.3.4
+// gone	CANCEL	8.3.3.5
+// internal-server-error	WAIT	8.3.3.6
+// item-not-found	CANCEL	8.3.3.7
+// jid-malformed	MODIFY	8.3.3.8
+// not-acceptable	MODIFY	8.3.3.9
+// not-allowed	CANCEL	8.3.3.10
+// not-authorized	AUTH	8.3.3.11
+// policy-violation	MODIFY	8.3.3.12
+// recipient-unavailable	WAIT	8.3.3.13
+// redirect	MODIFY	8.3.3.14
+// registration-required	AUTH	8.3.3.15
+// remote-server-not-found	CANCEL	8.3.3.16
+// remote-server-timeout	WAIT	8.3.3.17
+// resource-constraint	WAIT	8.3.3.18
+// service-unavailable	CANCEL	8.3.3.19
+// subscription-required	AUTH	8.3.3.20
+// undefined-condition	MODIFY	8.3.3.21
+// unexpected-request	WAIT	8.3.3.22
+
 
 /**
  * manager that initiates xmpp services,reports error and success.
@@ -27,9 +55,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class XMPPManager {
     private Map<WebSocketSession,XMPPTCPConnection> connections=new HashMap<>();
-    private final XMPPAdapter adapter=new XMPPAdapter();
-    private final SocketMessageSender messageSender=new SocketMessageSender();
-    
+    private XMPPAdapter adapter=new XMPPAdapter();
+    private SocketMessageSender messageSender=new SocketMessageSender();
+    private UserServiceImplementation  userService=new UserServiceImplementation(); 
     public XMPPManager(){}
 
     public void handleMessage(Message message,WebSocketSession session){
@@ -59,7 +87,7 @@ public class XMPPManager {
                 //rehashing
                 register(session,username,password,presence);
             }
-            case CONNECT -> {
+            case CONNECT ->{
                 String username=message.getFrom();
                 String password=message.getMessageContent();
                 //TODO
@@ -71,9 +99,7 @@ public class XMPPManager {
                     .messageContent("username/password is null").build());
                     return;
                 }
-                //rehashing
-                connect(session,username,password,presence);
-
+                connect(session, username, password, presence);
             }
             case DISCONNECT -> {
                 disconnect(session);
@@ -90,20 +116,12 @@ public class XMPPManager {
             }
         }
     }
-    private void closeSession(WebSocketSession session){
-        try{
-            if(session.isOpen()){
-                session.close();
-            }
-        }catch(IOException e){
-            log.error("Couldnt close session. "+e.getMessage());
-        }
-    }
+    
     public void register(WebSocketSession session,String username,String password,boolean presence){
         XMPPTCPConnection connection=null;
        
         try{
-            connection=adapter.connect(username,password,presence);
+            connection=adapter.createConnection(username,password,presence);
             log.info("XMPP connection created");
         }catch(IOException | InterruptedException e){
             sendMessageToSocket(session,Message.builder()
@@ -133,10 +151,14 @@ public class XMPPManager {
         
         try{
             adapter.createAccount(connection, username, password);
+            
+            log.info("username from connection:"+connection.getUser().getLocalpart().toString());
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.SUCCESS)
                 .build());
             closeSession(session);
+            connection.disconnect();
+            log.info("connection disconnnected.");
         }catch(IOException | InterruptedException e){
             connection.disconnect();
             sendMessageToSocket(session,Message.builder()
@@ -155,23 +177,77 @@ public class XMPPManager {
             closeSession(session); 
             log.error("RuntimeException: "+r.getMessage());
             return;
-        }catch(XMPPException | SmackException e){
+        }catch(XMPPException.XMPPErrorException e){
+            //user exists.
+            connection.disconnect();
+            String condition=e.getStanzaError().getCondition().toString();
+
+            if(condition == "conflict"){
+                sendMessageToSocket(session,Message.builder()
+                    .messageType(MessageType.ERROR)
+                    .messageContent("User already exists. "+condition)
+                    .build());
+                closeSession(session); 
+                log.error(e.getMessage());
+                return;
+            }else{
+                sendMessageToSocket(session,Message.builder()
+                    .messageType(MessageType.ERROR)
+                    .build());
+ 
+                log.warn("Unknown condition: "+condition);
+                closeSession(session);
+            }
+
+        }catch(SmackException e){
             connection.disconnect();
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.ERROR)
                 .messageContent("Couldnt create user.")
                 .build());
             closeSession(session); 
-            log.error("XMPP/SmackException: "+e.getMessage());
+            log.error("SmackException: "+e.getMessage());
+            return;
+        }catch(XMPPException e){
+            connection.disconnect();
+            sendMessageToSocket(session,Message.builder()
+                .messageType(MessageType.ERROR)
+                .messageContent("Couldnt create user.")
+                .build());
+            closeSession(session); 
+            log.error("XMPPException: "+e.getMessage());
             return;
         }
 
     }
+
+    // private void getStanzaError(String s){
+    //     Document xml=stringtoXML(s);
+    //     log.info("Element: "+xml.getElementById("error"));
+    //     log.info(xml.toString());
+    // }
+    // private Document stringtoXML(String s){
+    //     Document doc=null;
+    //     try{
+    //         DocumentBuilderFactory dbf=DocumentBuilderFactory.newInstance();
+    //         dbf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING,true);
+    //         DocumentBuilder builder=dbf.newDocumentBuilder();
+
+    //         doc=builder.parse(new InputSource(new StringReader(s)));
+
+    //     }catch(ParserConfigurationException | SAXException | IOException e){
+    //         // throw new RuntimeException(e.getMessage());
+    //         log.error(e.getMessage());
+    //     }
+    //     log.info("XML created: "+doc);
+    //     return doc;
+    // }
+    
     public void connect(WebSocketSession session,String username,String password,boolean presence){
         XMPPTCPConnection connection=null;
        
         try{
-            connection=adapter.connect(username,password,presence);
+            connection=adapter.createConnection(username,password,presence);
             log.info("XMPP connection created");
         }catch(IOException | InterruptedException e){
             sendMessageToSocket(session,Message.builder()
@@ -217,7 +293,7 @@ public class XMPPManager {
             connection.disconnect();
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.ERROR)
-                .messageContent("Couldnt login user.")
+                .messageContent("Error loggin in.")
                 .build());
             closeSession(session); 
             log.error("IO/Interrupted Exception: "+e.getMessage());
@@ -226,19 +302,31 @@ public class XMPPManager {
             connection.disconnect();
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.ERROR)
-                .messageContent("Couldnt login user.")
+                .messageContent("Error loggin in.")
                 .build());
             closeSession(session); 
             log.error("RuntimeException: "+r.getMessage());
             return;
-        }catch(XMPPException | SmackException e){
+        }catch(XMPPException e){
+            //user exists.
+            connection.disconnect();
+
+            sendMessageToSocket(session,Message.builder()
+                .messageType(MessageType.ERROR)
+                .messageContent("Error loggin in.")
+                .build());
+            closeSession(session); 
+            log.error(e.getMessage());
+            return;
+
+        }catch(SmackException e){
             connection.disconnect();
             sendMessageToSocket(session,Message.builder()
                 .messageType(MessageType.ERROR)
-                .messageContent("Couldnt login user.")
+                .messageContent("Error loggin in.")
                 .build());
             closeSession(session); 
-            log.error("XMPP/SmackException: "+e.getMessage());
+            log.error("SmackException: "+e.getMessage());
             return;
         }
 
@@ -253,14 +341,7 @@ public class XMPPManager {
                 .messageContent("Connection is not registered")
                 .build());
             log.error("Connection not registered");
-            try{
-                if(session.isOpen()){
-                    session.close(CloseStatus.SERVER_ERROR);
-                }            
-            }catch(IOException e){
-                //TODO:unable to close session
-                log.warn("Error closing websocket IOException: "+e.getMessage());
-            }
+            closeSession(session); 
             return;
         }
 
@@ -518,5 +599,14 @@ public class XMPPManager {
        
         messageSender.send(session,message);
 
+    }
+    private void closeSession(WebSocketSession session){
+        try{
+            if(session.isOpen()){
+                session.close();
+            }
+        }catch(IOException e){
+            log.error("Couldnt close session. "+e.getMessage());
+        }
     }
 }

@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -262,7 +263,6 @@ public class UserController {
                 response.setStatus(400);
                 return "User exists";
             }        
-
             int userid=userService.registerUser(username,password,email);
             String token=tokenService.createToken(userid);
             response.setHeader("Token",token);
@@ -278,6 +278,10 @@ public class UserController {
 
     }
     
+    @SendTo
+    public void sendToWS(){
+
+    }
     @GetMapping(path="/getFriends")
     @ResponseBody
     public String getFriends(HttpServletRequest request,HttpServletResponse response){
@@ -544,7 +548,7 @@ public class UserController {
             Friend friend=new Friend();    
             int userID=Integer.parseInt(uid);
             tokenService.verifyToken(token);
-            friend=userService.getFriend(userID);
+            friend=userService.getOneFriend(userID);
             
             Gson gson=new Gson();
             String str=gson.toJson(friend);

@@ -32,7 +32,7 @@ public class XMPPAdapter {
    private String domain="core.localdomain";
    public XMPPAdapter(){}
    
-   public XMPPTCPConnection connect(String username,String password,boolean presence)
+   public XMPPTCPConnection createConnection(String username,String password,boolean presence)
          throws IOException,XMPPException,SmackException,InterruptedException
    {
          XMPPTCPConnection connection;
@@ -61,6 +61,7 @@ public class XMPPAdapter {
    public void login(XMPPTCPConnection connection)
       throws IOException,SmackException,XMPPException,InterruptedException
    {
+      AccountManager accountManager=AccountManager.getInstance(connection);
       try{
          connection.login();
       }catch(IOException | SmackException | XMPPException | InterruptedException e){
@@ -71,14 +72,15 @@ public class XMPPAdapter {
    
    public void createAccount(XMPPTCPConnection connection,String username,String password)throws XMPPException.XMPPErrorException,
    SmackException.NoResponseException,InterruptedException,XmppStringprepException,SmackException.NotConnectedException{
-      AccountManager accountManager=AccountManager.getInstance(connection);
       
+      AccountManager accountManager=AccountManager.getInstance(connection);
       accountManager.sensitiveOperationOverInsecureConnection(true);
+      
       try{
          accountManager.createAccount(Localpart.from(username),password);
          log.info("Account created using account manager,connection: "+connection);
-      }catch(XMPPException.XMPPErrorException | SmackException.NoResponseException 
-         | InterruptedException  | XmppStringprepException | SmackException.NotConnectedException e){
+      }catch( SmackException.NoResponseException 
+         | InterruptedException  |XMPPException.XMPPErrorException | SmackException.NotConnectedException e){
          throw e;
       }
    }

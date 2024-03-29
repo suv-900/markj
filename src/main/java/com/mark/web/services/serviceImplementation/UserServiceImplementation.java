@@ -4,8 +4,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.LinkedList;
 import java.util.List;
@@ -19,7 +17,6 @@ import com.mark.web.exceptions.RequestExistsException;
 import com.mark.web.exceptions.UserNotFoundException;
 import com.mark.web.models.Friend;
 import com.mark.web.models.FriendRequest;
-import com.mark.web.models.User;
 import com.mark.web.services.UserService;
 
 public class UserServiceImplementation implements UserService {
@@ -331,8 +328,8 @@ public class UserServiceImplementation implements UserService {
 
     //refactor:postgres function
     public List<Friend> getAllFriends(int userid)throws SQLException{
-        String query1="select user_id,username,online,email from friends f join users u on f.user2id = u.user_id where f.user1id =?";
-        String query2="select user_id,username,online,email from friends f join users u on f.user1id = u.user_id where f.user2id =?"; 
+        String query1="select user_id,username,online from friends f join users u on f.user2id = u.user_id where f.user1id =?";
+        String query2="select user_id,username,onlinefrom friends f join users u on f.user1id = u.user_id where f.user2id =?"; 
         // String query="select getfriends(?)";
         
         Connection con=null;
@@ -351,14 +348,12 @@ public class UserServiceImplementation implements UserService {
         
             while(rs.next()){
                 String username=(String)rs.getObject("username");
-                String email=(String)rs.getObject("email");
                 boolean userActive=(boolean)rs.getObject("online");
                 int friendUserID=(int)rs.getObject("user_id");
                 
                 Friend f=new Friend();
                 f.setUsername(username);
                 f.setOnline(userActive);
-                f.setEmailID(email);
                 f.setUserID(friendUserID);
                 friendsList.add(f);
             }
@@ -374,14 +369,12 @@ public class UserServiceImplementation implements UserService {
             
             while(rs.next()){
                 String username=(String)rs.getObject("username");
-                String email=(String)rs.getObject("email");
                 boolean userActive=(boolean)rs.getObject("online");
                 int friendUserID=(int)rs.getObject("user_id");
                 
                 Friend f=new Friend();
                 f.setUsername(username);
                 f.setOnline(userActive);
-                f.setEmailID(email);
                 f.setUserID(friendUserID);
                 friendsList.add(f);
             }
@@ -500,12 +493,12 @@ public class UserServiceImplementation implements UserService {
         }
     }
 
-    public Friend getFriend(int userID)throws Exception{
+    public Friend getOneFriend(int userID)throws Exception{
         Connection con=null;
         PreparedStatement ps=null;
 
         try{
-            String query="select username,email,online from users where user_id=?";
+            String query="select username,online from users where user_id=?";
             con=datasource.getConnection();
             ps=con.prepareStatement(query);
             ps.setInt(1,userID);
@@ -515,11 +508,9 @@ public class UserServiceImplementation implements UserService {
 
             Friend friend=new Friend();
             String usernameF=(String) rs.getObject("username");
-            String email=(String)rs.getObject("email");
             boolean online=(boolean)rs.getObject("online");
             
             friend.setUsername(usernameF);
-            friend.setEmailID(email);
             friend.setOnline(online);
             friend.setUserID(userID);
             
@@ -568,52 +559,89 @@ public class UserServiceImplementation implements UserService {
     //     }
     // }
 
-    public int getUserID(String username)throws Exception{
-        int userid=-1;
+    // public int getUserID(String username)throws Exception{
+    //     int userid=-1;
         
-        String query="select user_id from users where username=?";
-        Connection con=datasource.getConnection();
-        PreparedStatement ps=con.prepareStatement(query);
+    //     String query="select user_id from users where username=?";
+    //     Connection con=datasource.getConnection();
+    //     PreparedStatement ps=con.prepareStatement(query);
        
-        try{
-            ps.setString(1,username);
-            ResultSet rs=ps.executeQuery();
-            if(rs.next()){
-                userid=(int)rs.getObject("user_id");
-            }
+    //     try{
+    //         ps.setString(1,username);
+    //         ResultSet rs=ps.executeQuery();
+    //         if(rs.next()){
+    //             userid=(int)rs.getObject("user_id");
+    //         }
 
+    //     }catch(Exception e){
+    //         log.info(e);
+    //         throw e;
+    //     }finally{
+    //         ps.close();
+    //         con.close();
+    //     }
+
+    //     return userid;
+    
+    // }
+    
+    public void storeMessages(int user1ID,int user2ID,String message)throws Exception{
+        
+       Connection con=null;
+       PreparedStatement ps=null;
+
+       try{
+            String query="insert into messages(user1ID,user2ID,message) values(?,?,?)";
+            
+            con=datasource.getConnection();
+            ps=con.prepareStatement(query);
+
+            ps.setInt(0,user1ID);
+            ps.setInt(1,user2ID);
+            ps.setString(2,message);
+
+            ps.executeQuery();
+
+       }catch(Exception e){
+            throw e;
+       }finally{
+            if(ps != null){
+                ps.close();
+            }
+            if(con != null){
+                con.close();
+            }
+       }
+    }
+    
+    public int getUserID(String username)throws Exception{
+        Connection con=null;
+        PreparedStatement ps=null;
+        int userid=-1;
+        try{
+            String query="select user_id from users where username=?";
+            con=datasource.getConnection();
+            ps=con.prepareStatement(query);
+
+            ps.setString(0,username);
+
+            ResultSet rs=ps.executeQuery();
+
+            if(!rs.next()){
+                throw new Exception("No such user found with username:"+username);
+            }
+            log.info("UserFound sending back userid (getUserID)"+userid);
+            userid=(int)rs.getObject("user_id");
         }catch(Exception e){
-            log.info(e);
             throw e;
         }finally{
-            ps.close();
-            con.close();
+            if(ps != null){
+                ps.close();
+            }
+            if(con != null){
+                con.close();
+            }
         }
-
         return userid;
-    
-    }
- 
-    public void searchUser(){
-
-    }
-    
-    public void sendFriendRequest(){
-
-    }
-
-    public void removeFriend(){
-
-    }
-
-    public void askUserOnline(){
-
-    } 
-
-    public void updateProfilePicture(){
-
-    }
-    public void reportUser(String username,int userID){
-
     }
 }
