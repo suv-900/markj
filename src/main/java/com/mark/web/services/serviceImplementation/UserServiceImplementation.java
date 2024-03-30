@@ -678,7 +678,7 @@ public class UserServiceImplementation implements UserService {
 
             // int rowCountReceiving=(int)rs.getObject("count");
             
-            String query1="select (message_id,message_content,created_at) from messages where from_userid=? and to_userid=? order by created_at desc limit 10";
+            String query1="select message_id,message_content,created_at from messages where from_userid=? and to_userid=? order by created_at asc limit 10";
 
             con=datasource.getConnection();
             ps=con.prepareStatement(query1);
@@ -689,7 +689,7 @@ public class UserServiceImplementation implements UserService {
             ResultSet rs=ps.executeQuery();
             
  
-            String query2="select (message_id,message_content,created_at) from messages where from_userid=? and to_userid=? order by created_at desc limit 10";
+            String query2="select message_id,message_content,created_at from messages where from_userid=? and to_userid=? order by created_at asc limit 10";
             
             ks=con.prepareStatement(query2);
 
@@ -699,12 +699,10 @@ public class UserServiceImplementation implements UserService {
             ResultSet qs=ks.executeQuery();
            
             List<ChatMessage> list=new LinkedList<ChatMessage>();
-            rs.next();
-            qs.next();
-            
+           
             while(rs.next() && qs.next()){
                 String messageContent=(String)rs.getObject("message_content");
-                Date createdAt=(Date)rs.getObject("created_at");
+                Timestamp createdAt=(Timestamp)rs.getObject("created_at");
                 int messageID=(int)rs.getObject("message_id");
                 
                 ChatMessage message=ChatMessage.builder()
@@ -718,7 +716,7 @@ public class UserServiceImplementation implements UserService {
                 list.add(message);
             
                 String messageContent2=(String)qs.getObject("message_content");
-                Date createdAt2=(Date)qs.getObject("created_at");
+                Timestamp createdAt2=(Timestamp)qs.getObject("created_at");
                 int messageID2=(int)qs.getObject("message_id");
                 
                 ChatMessage message2=ChatMessage.builder()
@@ -735,7 +733,7 @@ public class UserServiceImplementation implements UserService {
 
             while(rs.next()){
                 String messageContent=(String)rs.getObject("message_content");
-                Date createdAt=(Date)rs.getObject("created_at");
+                Timestamp createdAt=(Timestamp)rs.getObject("created_at");
                 int messageID=(int)rs.getObject("message_id");
                 
                 ChatMessage message=ChatMessage.builder()
@@ -750,7 +748,7 @@ public class UserServiceImplementation implements UserService {
             }
             while(qs.next()){
                 String messageContent=(String)qs.getObject("message_content");
-                Date createdAt=(Date)qs.getObject("created_at");
+                Timestamp createdAt=(Timestamp)qs.getObject("created_at");
                 int messageID=(int)qs.getObject("message_id");
                 
                 ChatMessage message=ChatMessage.builder()
