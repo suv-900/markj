@@ -1,6 +1,7 @@
 package com.mark.web.services.serviceImplementation;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -15,6 +16,7 @@ import org.apache.logging.log4j.Logger;
 import com.mark.web.db.DatabaseConnections;
 import com.mark.web.exceptions.RequestExistsException;
 import com.mark.web.exceptions.UserNotFoundException;
+import com.mark.web.models.ChatMessage;
 import com.mark.web.models.Friend;
 import com.mark.web.models.FriendRequest;
 import com.mark.web.services.UserService;
@@ -329,7 +331,7 @@ public class UserServiceImplementation implements UserService {
     //refactor:postgres function
     public List<Friend> getAllFriends(int userid)throws SQLException{
         String query1="select user_id,username,online from friends f join users u on f.user2id = u.user_id where f.user1id =?";
-        String query2="select user_id,username,onlinefrom friends f join users u on f.user1id = u.user_id where f.user2id =?"; 
+        String query2="select user_id,username,online from friends f join users u on f.user1id = u.user_id where f.user2id =?"; 
         // String query="select getfriends(?)";
         
         Connection con=null;
@@ -591,16 +593,16 @@ public class UserServiceImplementation implements UserService {
        PreparedStatement ps=null;
 
        try{
-            String query="insert into messages(fromUserID,toUserID,messageContent) values(?,?,?)";
+            String query="insert into messages(from_userid,to_userid,message_content) values(?,?,?)";
             
             con=datasource.getConnection();
             ps=con.prepareStatement(query);
 
-            ps.setInt(0,fromUserID);
-            ps.setInt(1,toUserID);
-            ps.setString(2,message);
+            ps.setInt(1,fromUserID);
+            ps.setInt(2,toUserID);
+            ps.setString(3,message);
 
-            ps.executeQuery();
+            ps.executeUpdate();
 
        }catch(Exception e){
             throw e;
@@ -623,15 +625,15 @@ public class UserServiceImplementation implements UserService {
             con=datasource.getConnection();
             ps=con.prepareStatement(query);
 
-            ps.setString(0,username);
+            ps.setString(1,username);
 
             ResultSet rs=ps.executeQuery();
 
             if(!rs.next()){
                 throw new Exception("No such user found with username:"+username);
             }
-            log.info("UserFound sending back userid (getUserID)"+userid);
             userid=(int)rs.getObject("user_id");
+            log.info("UserFound sending back userid (getUserID)"+userid);
         }catch(Exception e){
             throw e;
         }finally{
@@ -643,5 +645,137 @@ public class UserServiceImplementation implements UserService {
             }
         }
         return userid;
+    }
+    public List<ChatMessage> getMessages(int fromUserID,int toUserID)throws Exception{
+        Connection con=null;
+        PreparedStatement ps=null;
+
+        PreparedStatement ks=null;
+
+        try{
+            //sending
+            // string countrows="select count(*) messages where fromuserid=? and touserid=?";
+            
+            // con=datasource.getconnection();
+            // ps=con.preparestatement(countrows);
+
+            // ps.setint(1,fromuserid);
+            // ps.setint(2,touserid);
+
+            // resultset rs=ps.executequery();
+
+            // int rowcountsending=(int)rs.getobject("count");
+            
+
+           // String countRowsReceiving="select count(*) messages where from_userid=? and to_userid=?";
+            
+            // ps=con.prepareStatement(countRowsReceiving);
+
+            // ps.setInt(1,toUserID);
+            // ps.setInt(2,fromUserID);
+
+            // ResultSet qs=ps.executeQuery();
+
+            // int rowCountReceiving=(int)rs.getObject("count");
+            
+            String query1="select (message_id,message_content,created_at) from messages where from_userid=? and to_userid=? order by created_at desc limit 10";
+
+            con=datasource.getConnection();
+            ps=con.prepareStatement(query1);
+
+            ps.setInt(1,fromUserID);
+            ps.setInt(2,toUserID);
+
+            ResultSet rs=ps.executeQuery();
+            
+ 
+            String query2="select (message_id,message_content,created_at) from messages where from_userid=? and to_userid=? order by created_at desc limit 10";
+            
+            ks=con.prepareStatement(query2);
+
+            ks.setInt(1,toUserID);
+            ks.setInt(2,fromUserID);
+
+            ResultSet qs=ks.executeQuery();
+           
+            List<ChatMessage> list=new LinkedList<ChatMessage>();
+            rs.next();
+            qs.next();
+            
+            while(rs.next() && qs.next()){
+                String messageContent=(String)rs.getObject("message_content");
+                Date createdAt=(Date)rs.getObject("created_at");
+                int messageID=(int)rs.getObject("message_id");
+                
+                ChatMessage message=ChatMessage.builder()
+                    .messageContent(messageContent)
+                    .createdAt(createdAt)
+                    .fromUserID(fromUserID)
+                    .toUserID(toUserID)
+                    .messageID(messageID)
+                    .messageType("sending")
+                    .build(); 
+                list.add(message);
+            
+                String messageContent2=(String)qs.getObject("message_content");
+                Date createdAt2=(Date)qs.getObject("created_at");
+                int messageID2=(int)qs.getObject("message_id");
+                
+                ChatMessage message2=ChatMessage.builder()
+                    .messageContent(messageContent2)
+                    .createdAt(createdAt2)
+                    .fromUserID(toUserID)
+                    .toUserID(fromUserID)
+                    .messageID(messageID2)
+                    .messageType("receiving")
+                    .build(); 
+                list.add(message2);
+            
+            }
+
+            while(rs.next()){
+                String messageContent=(String)rs.getObject("message_content");
+                Date createdAt=(Date)rs.getObject("created_at");
+                int messageID=(int)rs.getObject("message_id");
+                
+                ChatMessage message=ChatMessage.builder()
+                    .messageContent(messageContent)
+                    .createdAt(createdAt)
+                    .fromUserID(fromUserID)
+                    .toUserID(toUserID)
+                    .messageID(messageID)
+                    .messageType("sending")
+                    .build(); 
+                list.add(message);
+            }
+            while(qs.next()){
+                String messageContent=(String)qs.getObject("message_content");
+                Date createdAt=(Date)qs.getObject("created_at");
+                int messageID=(int)qs.getObject("message_id");
+                
+                ChatMessage message=ChatMessage.builder()
+                    .messageContent(messageContent)
+                    .createdAt(createdAt)
+                    .fromUserID(toUserID)
+                    .toUserID(fromUserID)
+                    .messageID(messageID)
+                    .messageType("receiving")
+                    .build(); 
+                list.add(message);
+            }
+            return list;
+        }catch(Exception e){
+            throw e;
+        }finally{
+            if(ps != null){
+                ps.close();
+            }
+            if(ks != null){
+                ks.close();
+            }
+            if(con != null){
+                con.close();
+            }
+        }
     }
 }

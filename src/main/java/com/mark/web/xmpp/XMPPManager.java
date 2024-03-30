@@ -99,6 +99,7 @@ public final class XMPPManager {
                     //bad message
                     sendMessageToSocket(session, Message.builder().messageType(MessageType.ERROR)
                     .messageContent("username/password is null").build());
+                    closeSession(session);
                     return;
                 }
                 //rehashing
@@ -114,6 +115,7 @@ public final class XMPPManager {
                     //bad message
                     sendMessageToSocket(session, Message.builder().messageType(MessageType.ERROR)
                     .messageContent("username/password is null").build());
+                    closeSession(session);
                     return;
                 }
                 connect(session, username, password, presence);
@@ -121,7 +123,7 @@ public final class XMPPManager {
             case DISCONNECT -> {
                 disconnect(session);
             }
-            case MESSAGE-> {
+            case MESSAGE -> {
                 sendMessage(session,message);
             }
             default -> {
@@ -130,6 +132,7 @@ public final class XMPPManager {
                     .messageType(MessageType.ERROR)
                     .messageContent(type+" type is not implemented.")
                     .build());
+                closeSession(session);
             }
         }
     }
@@ -351,7 +354,7 @@ public final class XMPPManager {
         }
 
         switch(message.getMessageType()){
-            case NEW_MESSAGE -> {
+            case MESSAGE -> {
                 try{
 
                     int fromUserID=userService.getUserID(message.getFrom());
@@ -551,7 +554,10 @@ public final class XMPPManager {
                     log.error("Stringprep error: "+e.getMessage());
                 }
             }
-            default -> log.warn("Message Type not implemented");
+            default -> {
+                log.warn("Message Type not implemented");
+                closeSession(session);
+            }
         }
 
     }

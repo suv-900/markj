@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import com.mark.web.exceptions.RequestExistsException;
 import com.mark.web.exceptions.UserNotFoundException;
+import com.mark.web.models.ChatMessage;
 import com.mark.web.models.Friend;
 import com.mark.web.models.FriendRequest;
 import com.mark.web.services.serviceImplementation.TokenServiceImplementation;
@@ -51,6 +52,7 @@ import com.mark.web.utils.LogFileWriter;
 public class UserController {
     private static UserServiceImplementation userService=new UserServiceImplementation();
     private static TokenServiceImplementation tokenService=new TokenServiceImplementation();   
+    private Gson gson=new Gson();
 
     @PostMapping("/verifytoken")
     @ResponseBody
@@ -317,7 +319,6 @@ public class UserController {
             int userid=tokenService.verifyToken(token);
             list=userService.getFriendRequests(userid);
 
-            Gson gson=new Gson();
             String str=gson.toJson(list);
             response.setStatus(200); 
             return str;
@@ -517,7 +518,6 @@ public class UserController {
             tokenService.verifyToken(token);
             friend=userService.getOneFriend(userID);
             
-            Gson gson=new Gson();
             String str=gson.toJson(friend);
             response.setStatus(200);
             return str;
@@ -538,5 +538,46 @@ public class UserController {
         }
 
     }
-    
+
+    @GetMapping(path="/getMessages")
+    @ResponseBody
+    public String getMessages(HttpServletRequest request,HttpServletResponse response){
+        String token =request.getHeader("Token");
+        if(token == null){
+            response.setStatus(400);
+            return "Token not found";
+        }
+        String str=request.getParameter("userID");
+        if(str == null){
+            response.setStatus(400);
+            return "chat with userID not found.";
+        }
+
+
+        try{
+            int fromUserID=tokenService.verifyToken(token);
+            int toUserID=Integer.parseInt(str);
+            
+            List<ChatMessage> messageList=userService.getMessages(fromUserID,toUserID);
+            String messageJSON=gson.toJson(messageList);
+           
+            response.setStatus(200);
+            return messageJSON;
+        }catch(JWTVerificationException e){
+           log.error(e.getMessage());
+           response.setStatus(401);
+           return e.getMessage(); 
+        }
+        catch(NumberFormatException e){
+            response.setStatus(500);
+            log.error(e.getMessage());
+            return "Server Error";
+        }
+        catch(Exception e){
+            log.error(e.getMessage());
+            response.setStatus(500);
+            return "Server Error";
+        }
+
+    }    
 }
