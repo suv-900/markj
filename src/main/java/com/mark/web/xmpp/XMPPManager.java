@@ -74,7 +74,7 @@ public final class XMPPManager {
 
     private Map<WebSocketSession,XMPPTCPConnection> connections=new HashMap<>();
     private XMPPAdapter adapter=new XMPPAdapter();
-    private SocketMessageSender messageSender=new SocketMessageSender();
+    private SocketMessageSender messageSender=SocketMessageSender.getInstance();
     private UserServiceImplementation  userService=new UserServiceImplementation(); 
 
     public void handleMessage(Message message,WebSocketSession session){
@@ -288,15 +288,6 @@ public final class XMPPManager {
             adapter.login(connection);
             log.info("Logged in successfully.");
 
-            sendMessageToSocket(session,Message.builder()
-                .messageType(MessageType.SUCCESS)
-                .build());
-
-            log.info("started xmppsession successfully.");
-            log.info("Stored connection & session");
-            connections.put(session,connection);
-            log.info("Number of connections entries: "+connections.size());
-
         }catch(IOException | InterruptedException e){
             connection.disconnect();
             sendMessageToSocket(session,Message.builder()
@@ -337,6 +328,14 @@ public final class XMPPManager {
             log.error("SmackException: "+e.getMessage());
             return;
         }
+        log.info("started xmppsession successfully.");
+        log.info("Stored connection & session");
+        connections.put(session,connection);
+        log.info("Number of connections entries: "+connections.size());
+        
+        adapter.addIncomingMessageListener(connection, session);
+        log.info("Added message listener.");
+
 
     }
 
@@ -365,9 +364,9 @@ public final class XMPPManager {
                     adapter.sendMessage(connection,message.getMessageContent(),message.getTo());
                     log.info("Message sent");
                     
-                    log.info("Sending confirmation.");
-                    sendMessageToSocket(session,Message.builder()
-                        .messageType(MessageType.SUCCESS).build());
+                    // log.info("Sending confirmation.");
+                    // sendMessageToSocket(session,Message.builder()
+                    //     .messageType(MessageType.SUCCESS).build());
                 
                 }catch(SmackException.NotConnectedException e){
                     sendMessageToSocket(session,Message.builder()

@@ -16,8 +16,22 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class SocketMessageSender {
-public SocketMessageSender(){}
-public void send(WebSocketSession session,Message message){
+    private static SocketMessageSender instance;
+    
+    private SocketMessageSender(){}
+
+    public static SocketMessageSender getInstance(){
+        if(instance == null){
+            synchronized(SocketMessageSender.class){
+                if(instance == null){
+                    instance=new SocketMessageSender();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public void send(WebSocketSession session,Message message){
     try{
         Gson gson=new Gson();
         String str=gson.toJson(message);
@@ -26,5 +40,6 @@ public void send(WebSocketSession session,Message message){
     }catch(IOException e){
         log.error("couldnt sent message to websocketsession "+e.getMessage());
     }
-   } 
+   }
+   
 }

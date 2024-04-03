@@ -20,6 +20,9 @@ import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Localpart;
 import org.jxmpp.stringprep.XmppStringprepException;
 // import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.web.socket.WebSocketSession;
+
+import com.mark.web.websocket.wsmessage.Message;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 // @EnableConfigurationProperties(XMPPConfig.class)
 public class XMPPAdapter {
    // private XMPPConfig baseConfig;
+   private SocketMessageSender messageSender=SocketMessageSender.getInstance();
    private int port=5222;
    private String host="openfire";
    private String domain="core.localdomain";
@@ -97,7 +101,12 @@ public class XMPPAdapter {
          throw e;
       }
    }
-
+   public void addIncomingMessageListener(XMPPTCPConnection connection,WebSocketSession session){
+      ChatManager chatManager=ChatManager.getInstanceFor(connection);
+      chatManager.addIncomingListener((from,message,chat)->messageSender.send(session,Message.builder()
+         .to(message.getTo().getLocalpartOrNull().toString()).messageContent(message.getBody()).from(message.getFrom().getLocalpartOrNull().toString())
+         .build()));
+   }
    public Set<RosterEntry> getContacts(XMPPTCPConnection connection)
       throws SmackException.NotConnectedException,InterruptedException,SmackException.NotLoggedInException
    {
