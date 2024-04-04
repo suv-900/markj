@@ -1,1 +1,8 @@
-nothing just learning coding styles and using spring...improvements are welcome!
+# mark
+a simple chatting application using 
+- Spring Boot
+- Openfire,Smack
+- Postgres
+- WebSockets
+
+backend work is complete!
