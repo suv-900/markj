@@ -6,3 +6,5 @@ a simple chatting application using
 - WebSockets
 
 backend work is complete!
+
+video - https://www.youtube.com/watch?v=_7Da1ulTjRQ
