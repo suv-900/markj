@@ -2,7 +2,7 @@
 a simple chatting application using 
 - Spring Boot
 - Openfire,Smack.JWT
-- Postgres
+- Postgres,DBConnection Pooling
 - WebSockets
 
 backend work is complete!
