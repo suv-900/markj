@@ -1,7 +1,7 @@
 # mark
 a simple chatting application using 
 - Spring Boot
-- Openfire,Smack
+- Openfire,Smack.JWT
 - Postgres
 - WebSockets
 
