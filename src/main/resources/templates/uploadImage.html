@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>    
+    <body>
+        <form id="imageUploadForm" enctype="multipart/form-data">
+            <input id="image" type="file" accept="image/*" required /><br>
+
+            <input id="imageDescription" type="text" /><br>
+            
+            <button type="button" onclick="submitImageUploadForm()">upload image</button>
+        </form>             
+        <div id="outputDiv"></div>
+        
+    </body>
+
+    <script>
+
+        //load page
+        //check token if no token invalid req
+        //add image 
+        //send properly
+        //programming is about a series of instruction that gives some output the more you decorate the instructions the better your code is 
+        
+        const token=localStorage.getItem("Token");
+        const outputDiv=document.getElementById("outputDiv");
+
+        outputDiv.innerHTML=token === null ? "No token login required":"";
+        
+        function isEmpty(s){
+            return s.length === 0 ?true:false;
+        }
+        
+        async function submitImageUploadForm(){
+            
+            if(token !== null){
+                const fileInput=document.getElementById("image");
+                const imageDescription=document.getElementById("imageDescription").value;
+                
+                // if(isEmpty(imageDescription)){
+                //     outputDiv.innerHTML="missing fields";
+                //     return;
+                // }
+                
+                const xhttp=new XMLHttpRequest();
+
+                xhttp.onreadystatechange=()=>{
+                    if(xhttp.readyState=4){
+                        const status=xhttp.status;
+                        if(status===200){
+                            outputDiv.innerHTML=status;
+                        }else if(status === 500){
+                            outputDiv.innerHTML=500+" Server Error";
+                        }else if(status === 401){
+                            // document.createElement("error").setAttribute()
+                            outputDiv.innerHTML=401+" Unauthorised";
+                        }else if(status === 400){
+                            outputDiv.innerHTML="400 Bad Request";
+                        }
+                    }
+                }
+
+                const formData=new FormData();
+                formData.append("image",fileInput.files[0]);
+                
+                xhttp.open("POST","http://localhost:8080/users/uploadImage",true);
+                xhttp.setRequestHeader("Token",token);
+                xhttp.setRequestHeader("Content-Type","multipart/form-data ; boundary=-----------------------------30973707718313472993303863777--");
+                
+                //quick fix
+                //    -----------------------------30973707718313472993303863777--
+ 
+                // console.log(`formData=${formData}&imageDesc=${imageDescription}`);
+                // xhttp.send(`formData=${formData}&imageDescription=${imageDescription}`);
+                xhttp.send(formData);
+            }else{
+                outputDiv.innerHTML="No token login required";
+            }
+        }
+    </script>
+</html>

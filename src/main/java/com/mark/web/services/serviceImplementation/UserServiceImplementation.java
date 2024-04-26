@@ -678,7 +678,7 @@ public class UserServiceImplementation implements UserService {
 
             // int rowCountReceiving=(int)rs.getObject("count");
             
-            String query1="select message_id,message_content,created_at from messages where from_userid=? and to_userid=? order by created_at asc limit 10";
+            String query1="select message_id,message_content,created_at from messages where from_userid=? and to_userid=? order by created_at asc";
 
             con=datasource.getConnection();
             ps=con.prepareStatement(query1);
@@ -689,7 +689,7 @@ public class UserServiceImplementation implements UserService {
             ResultSet rs=ps.executeQuery();
             
  
-            String query2="select message_id,message_content,created_at from messages where from_userid=? and to_userid=? order by created_at asc limit 10";
+            String query2="select message_id,message_content,created_at from messages where from_userid=? and to_userid=? order by created_at asc";
             
             ks=con.prepareStatement(query2);
 
